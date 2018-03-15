@@ -1,0 +1,1547 @@
+<project name="TestRun" default="client">
+   <!-- 
+        To test tomcat standalone, type:
+          bin/tomcat.sh ant -f conf/test-tomcat.xml client
+        or for Windows systems, type:
+          bin\tomcat.bat ant -f conf/test-tomcat.xml client
+        
+        To test apache, type:
+          bin/tomcat.sh ant -f conf/test-tomcat.xml -Dport=<your port> -Dhttp.protocol=HTTP/1.1 client-apache
+        or for Windows systems, type:
+          bin/tomcat.bat ant -f conf/test-tomcat.xml -Dport=<your port> -Dhttp.protocol=HTTP/1.1 client-apache
+	  Specify <your port> from "Port" setting in apache's httpd.conf file.
+
+        Works best if you manually start tomcat, and if necessary apache.  If you use this file's
+        "main" or "apache" targets, tomcat may not start fast enough to avoid failing some of the
+        early tests.
+    -->
+
+     <property name="revision" value="$Revision: 1.51 $" />  
+     <property name="host" value="127.0.0.1" />
+     <property name="port"     value="8080" />
+     <property name="colonPort" value=":${port}" />
+     <property name="dir.status" value="301" />
+     <property name="redir.status" value="301" />
+     <property name="outputType"     value="text" />
+     <property name="debug"     value="0" />
+     <!-- expected http protocol -->
+     <property name="http.protocol" value="HTTP/1.0" />
+
+     <property name="gdir" value="../Golden" />
+
+     <!-- ==================== Tasks ==================== -->     
+     <taskdef name="httpClient" 
+	      classname="org.apache.tomcat.util.test.HttpClient" />
+     <taskdef name="httpRequest" 
+	      classname="org.apache.tomcat.util.test.HttpRequest" />
+     <taskdef name="header" 
+	      classname="org.apache.tomcat.util.test.Header" />
+     <taskdef name="param" 
+	      classname="org.apache.tomcat.util.test.Parameter" />
+     <taskdef name="cookie" 
+	      classname="org.apache.tomcat.util.test.Cookie" />
+     <taskdef name="body" 
+	      classname="org.apache.tomcat.util.test.Body" />
+     <taskdef name="goldenMatch" 
+	      classname="org.apache.tomcat.util.test.matchers.GoldenMatch" />
+     <taskdef name="headerMatch" 
+	      classname="org.apache.tomcat.util.test.matchers.HeaderMatch" />
+     <taskdef name="httpStatusMatch" 
+	      classname="org.apache.tomcat.util.test.matchers.HttpStatusMatch" />
+     <taskdef name="responseMatch" 
+	      classname="org.apache.tomcat.util.test.matchers.ResponseMatch" />
+     <taskdef name="responseMatchFile" 
+	      classname="org.apache.tomcat.util.test.matchers.ResponseMatchFile" />
+     <taskdef name="sessionMatch" 
+	      classname="org.apache.tomcat.util.test.matchers.SessionMatch" />
+     <taskdef name="comment" 
+	      classname="org.apache.tomcat.util.test.Body" />
+
+     <taskdef name="gtestDefaults"
+	      classname="org.apache.tomcat.util.test.TestDefaults" />
+
+     <!-- Backward compatibility -->
+     <taskdef name="gtest" 
+	      classname="org.apache.tomcat.util.test.GTest" />
+
+
+  <!-- ==================== Defaults ==================== -->
+  <target name="init" >
+    <echo message="Running test-tomcat ${port} ${host} ${http.protocol}"/>
+    <gtestDefaults port="${port}" 
+		   host="${host}"
+		   debug="${debug}" 
+		   protocol="${http.protocol}"
+		   outputType="${outputType}" />
+  </target>
+
+  <!-- ==================== File tests ==================== -->
+  <!-- File, directory and welcome tests -->
+
+  <target name="file" depends="init">
+
+    <httpClient unless="netscape.static">
+        <comment>Content Type Test</comment>
+        <httpRequest path="/test/binaries/image1.gif" />
+        <headerMatch name="Content-Type" value="image/gif"/>
+    </httpClient>
+
+    <gtest  description="File Integrity and Length Test"
+           request="GET /test/binaries/image1.gif HTTP/1.0"
+           goldenFile="${gdir}/image1.gif"
+           exactMatch="true"  />
+    
+    <gtest  description="Get a directory - expect redirect"
+           request="GET /test/welcome HTTP/1.0"
+           expectHeaders="Location:/welcome/" 
+           returnCode="${http.protocol} ${redir.status}" /> 
+
+    <gtest  description="Get a dir without welcome file"
+           request="GET /test/binaries HTTP/1.0"
+           returnCode="${http.protocol} ${redir.status}" />
+    
+  </target>
+
+  <!-- ==================== Parameters tests ==================== -->
+
+  <target name="headers" depends="init">
+      <httpClient>
+          <comment>Set Content-Type and Content-Length, get OS</comment>
+          <httpRequest path="/test/servlet/headers.HeaderOS" />
+          <httpStatusMatch match="200" />
+          <headerMatch name="Content-Type" value="test/foobar" />
+          <headerMatch name="Content-Length" value="5" />
+      </httpClient>
+  </target>
+  
+  <target name="enc" depends="init">
+      <httpClient>
+          <comment>Few romanian chars in UNICED</comment>
+          <httpRequest path="/test/servlet/params.Params">
+             <param name="a" value="Inscrie%C5%A3i-v%C4%83" />
+          </httpRequest>
+          <responseMatch match="Inscrie&#xC5;&#xA3;i-v&#xC4;&#x83;" />
+          <httpStatusMatch match="200" />
+      </httpClient>
+      <httpClient>
+          <comment>Japanese</comment>
+          <httpRequest path="/test/servlet/ja">
+             <param name="lang" value="ja" />
+          </httpRequest>
+          <responseMatch match="Location = &#xBD;&#xEA;&#xBA;&#xDF;&#xC3;&#xCF;" />
+      </httpClient>
+      <httpClient>
+          <comment>Test space in directory name</comment>
+          <httpRequest path="/test/enc/dir%20name" />
+          <httpStatusMatch match="${redir.status}" />
+          <headerMatch name="Location"
+                       value="http://${host}${colonPort}/enc/dir%20name/index.html"
+                        />
+      </httpClient>
+      <httpClient>
+          <comment>Test space in directory name #2</comment>
+          <httpRequest path="/test/enc/dir%20name/index.html" />
+          <httpStatusMatch match="200" />
+          <responseMatch match="Found" />
+      </httpClient>
+      <httpClient>
+          <comment>Test space in HTML name</comment>
+          <httpRequest path="/test/enc/test%20file.html" />
+          <httpStatusMatch match="200" />
+          <responseMatch match="Test" />
+      </httpClient>
+      <httpClient>
+          <comment>Test space in JSP name</comment>
+          <httpRequest path="/test/enc/test%20jsp.jsp" />
+          <httpStatusMatch match="200" />
+          <responseMatch match="Hello" />
+      </httpClient>
+      <httpClient>
+          <comment>Test encoded space in HTML name</comment>
+          <httpRequest path="/test/enc/double%2520enc.html" />
+          <httpStatusMatch match="200" />
+          <responseMatch match="Test if we decode only once &lt;%= 1 %&gt;" />
+      </httpClient>
+      <httpClient>
+          <comment>Test encoded space in JSP Name</comment>
+          <httpRequest path="/test/enc/double%2520enc.jsp" />
+          <httpStatusMatch match="200" />
+          <responseMatch match="Test if we decode only once 1" />
+      </httpClient>
+      <httpClient>
+          <comment>Test '+' in HTML name</comment>
+          <httpRequest path="/test/enc/test+plus.html" />
+          <httpStatusMatch match="200" />
+          <responseMatch match="Test with + &lt;%= 1 %&gt;" />
+      </httpClient>
+      <httpClient>
+          <comment>Test '+' in JSP name</comment>
+          <httpRequest path="/test/enc/test+plus.jsp" />
+          <httpStatusMatch match="200" />
+          <responseMatch match="Test with + 1" />
+      </httpClient>
+      <httpClient>
+          <comment>Test servlet with encoded '?' in pathinfo</comment>
+          <httpRequest path="/test/servlet/RequestDump/path%3Finfo" />
+          <httpStatusMatch match="200" />
+          <responseMatch match="&lt;tr&gt;&lt;td&gt;Path Info&lt;/td&gt;&lt;td&gt;/path?info&lt;/td&gt;&lt;/tr&gt;" />
+      </httpClient>
+      <httpClient>
+          <comment>Test '+' in query string is decoded.</comment>
+          <httpRequest path="/test/servlet/RequestDump?param=more+text" />
+          <httpStatusMatch match="200" />
+          <responseMatch match="&lt;tr&gt;&lt;td&gt;param&lt;/td&gt;&lt;td&gt;&lt;span&gt;more text&lt;/span&gt; &lt;/td&gt;&lt;/tr&gt;" />
+      </httpClient>
+  </target>
+
+  <target name="params" depends="init">
+      <httpClient>
+          <comment>Simple GET with parameters</comment>
+          <httpRequest path="/test/servlet/params.Params">
+             <param name="a" value="k" />
+             <param name="c" value="l" />
+             <param name="a" value="m" />
+          </httpRequest>
+          <httpStatusMatch match="200" />
+          <responseMatch match="a = [ k , m ]" />
+          <responseMatch match="c = [ l ]"/>
+      </httpClient>
+
+      <httpClient>
+          <comment>Simple POST parameters</comment>
+          <httpRequest path="/test/servlet/params.Params" 
+		      method="POST">
+             <param name="a" value="b" />
+             <param name="c" value="d" />
+          </httpRequest>
+          <httpStatusMatch match="200" />
+          <responseMatch match="a = [ b ]"/>
+          <responseMatch match="c = [ d ]"/>
+      </httpClient>
+
+      <httpClient>
+          <comment>POST and GET parameters</comment>
+          <httpRequest
+              path="/test/servlet/params.Params" 
+              method="POST">
+             <param name="a" value="x" type="GET" />
+             <param name="m" value="n" type="GET" />
+             <param name="a" value="b" type="POST" />
+             <param name="c" value="d" type="POST" />
+          </httpRequest>
+          <httpStatusMatch match="200" />
+          <responseMatch match="a = [ x , b ]"/>
+          <responseMatch match="m = [ n ]"/>
+          <responseMatch match="c = [ d ]"/>
+      </httpClient>
+    
+      <httpClient>
+          <comment>The POST data is not read before getParameter</comment>
+          <httpRequest 
+              path="/test/servlet/params.InputStreamParams" 
+              method="POST">
+             <param name="a" value="x" type="GET" />
+             <param name="m" value="n" type="GET"/>
+             <param name="a" value="b" type="POST" />
+             <param name="c" value="d" type="POST" />
+          </httpRequest>
+          <responseMatch match="a = [ x ]" />
+          <responseMatch match="m = [ n ]"/>
+          <responseMatch match="c = [ d ]" magnitude="false" />
+      </httpClient>
+    
+      <httpClient>
+          <comment>No data after the params are read</comment>
+          <httpRequest 
+              path="/test/servlet/params.ParamsInputStream" 
+              method="POST">
+             <param name="a" value="x" type="GET" />
+             <param name="m" value="n" type="GET"/>
+             <param name="a" value="b" type="POST" />
+             <param name="c" value="d" type="POST" />
+          </httpRequest>
+          <responseMatch match="a = [ x , b ]" />
+          <responseMatch match="m = [ n ]"/>
+          <responseMatch match="c = [ d ]"/>
+      </httpClient>
+    
+      <httpClient>
+          <comment>Ordering in RequestDispatcher.include</comment>
+          <httpRequest 
+              path="/test/servlet/params.RDInclude" 
+              method="GET">
+             <param name="a" value="k" type="GET" />
+             <param name="c" value="l" type="GET"/>
+             <param name="a" value="m" type="GET"/>
+          </httpRequest>
+          <responseMatch match="before:a = [ k , m ]" />
+          <responseMatch match="before:c = [ l ]" />
+          <responseMatch 
+             match="Calling RD.include for: params.Params/include1?a=b"/>
+          <responseMatch match="/include1:a = [ b , k , m ]" />
+          <responseMatch match="/include1:c = [ l ]" />
+          <responseMatch match="postInclude1:a = [ k , m ]" />
+          <responseMatch match="postInclude1:c = [ l ]" />
+          <responseMatch 
+        match="Calling RD.include for: params.Params/include2?a=c&amp;d=e"/>
+          <responseMatch match="/include2:a = [ c , k , m ]" />
+          <responseMatch match="/include2:d = [ e ]" />
+          <responseMatch match="/include2:c = [ l ]" />
+          <responseMatch match="postInclude2:a = [ k , m ]" />
+          <responseMatch match="postInclude2:c = [ l ]" />
+      </httpClient>
+    
+      <httpClient>
+          <comment>Ordering in RequestDispatcher.include, POST</comment>
+          <httpRequest 
+              path="/test/servlet/params.RDInclude" 
+              method="POST">
+             <param name="a" value="k" type="GET" />
+             <param name="c" value="l" type="GET"/>
+             <param name="a" value="m" type="POST"/>
+          </httpRequest>
+          <responseMatch match="before:a = [ k , m ]" />
+          <responseMatch match="before:c = [ l ]" />
+          <responseMatch
+             match="Calling RD.include for: params.Params/include1?a=b"/>
+          <responseMatch match="/include1:a = [ b , k , m ]" />
+          <responseMatch match="/include1:c = [ l ]" />
+          <responseMatch match="postInclude1:a = [ k , m ]" />
+          <responseMatch match="postInclude1:c = [ l ]" />
+          <responseMatch 
+        match="Calling RD.include for: params.Params/include2?a=c&amp;d=e"/>
+          <responseMatch match="/include2:a = [ c , k , m ]" />
+          <responseMatch match="/include2:d = [ e ]" />
+          <responseMatch match="/include2:c = [ l ]" />
+          <responseMatch match="postInclude2:a = [ k , m ]" />
+          <responseMatch match="postInclude2:c = [ l ]" />
+      </httpClient>
+     
+      <httpClient>
+          <comment>RequestDispatcher - POST, include, params </comment>
+          <httpRequest 
+              path="/test/servlet/params.RDIncludeParam" 
+              method="POST">
+             <param name="a" value="k" type="GET" />
+             <param name="c" value="l" type="GET"/>
+             <param name="a" value="m" type="POST"/>
+          </httpRequest>
+          <responseMatch match="/include1:a = [ b , k , m ]" />
+          <responseMatch match="/include1:c = [ l ]" />
+          <responseMatch match="postInclude1:a = [ k , m ]" />
+          <responseMatch match="postInclude1:c = [ l ]" />
+          <responseMatch match="/include2:a = [ c , k , m ]" />
+          <responseMatch match="/include2:d = [ e ]" />
+          <responseMatch match="/include2:c = [ l ]" />
+          <responseMatch match="postInclude2:a = [ k , m ]" />
+          <responseMatch match="postInclude2:c = [ l ]" />
+      </httpClient>
+    
+      <!-- Fails in Tomcat3.2.x -->
+      <httpClient>
+          <comment>RequestDispatcher - POST, include, BODY, params </comment>
+          <httpRequest 
+              path="/test/servlet/params.RDIncludeISParams" 
+              method="POST">
+             <param name="a" value="k" type="GET" />
+             <param name="c" value="l" type="GET"/>
+             <param name="a" value="m" type="POST"/>
+             <param name="b" value="n" type="POST"/>
+          </httpRequest>
+          <!-- BODY - read with IS, inside the included servlet -->
+          <responseMatch match="a=m&amp;b=n" />
+
+          <responseMatch match="/include1:c = [ l ]" />
+          <responseMatch match="/include1:a = [ b , k ]" />
+          <responseMatch match="/include1:b = [ n ]" magnitude="false" />
+          <responseMatch match="postInclude1:a = [ k ]" />
+          <responseMatch match="postInclude1:c = [ l ]" />
+      </httpClient>
+    
+      <!-- Fails in Tomcat3.2.x -->
+      <httpClient>
+          <comment>POST, JSP, include, BODY, params </comment>
+          <httpRequest 
+              path="/test/params/includeISParams.jsp" 
+              method="POST">
+             <param name="a" value="k" type="GET" />
+             <param name="c" value="l" type="GET"/>
+             <param name="a" value="m" type="POST"/>
+             <param name="b" value="n" type="POST"/>
+          </httpRequest>
+          <!-- BODY - read with IS, inside the included servlet -->
+          <responseMatch match="a=m&amp;b=n" />
+
+          <responseMatch match="/include1:c = [ l ]" />
+          <responseMatch match="/include1:a = [ b , k ]" />
+          <responseMatch match="/include1:b = [ n ]" magnitude="false" />
+          <responseMatch match="postInclude1:a = [ k ]" />
+          <responseMatch match="postInclude1:c = [ l ]" />
+      </httpClient>
+    
+      <httpClient>
+          <comment>2 RequestDispatchers, Body read in the second </comment>
+          <httpRequest 
+              path="/test/servlet/params.IncludeIncludeISParams" 
+              method="POST">
+             <param name="a" value="k" type="GET" />
+             <param name="c" value="l" type="GET"/>
+             <param name="a" value="m" type="POST"/>
+             <param name="b" value="n" type="POST"/>
+          </httpRequest>
+          <!-- BODY - read with IS, inside the included servlet -->
+          <responseMatch match="a=m&amp;b=n" />
+
+          <responseMatch match="/include1:c = [ l ]" />
+          <responseMatch match="/include1:a = [ b , x , k ]" />
+          <responseMatch match="/include1:a = [ m ]" magnitude="false" />
+          <responseMatch match="postInclude1:a = [ x , k ]" />
+          <responseMatch match="postInclude0:a = [ k ]" />
+      </httpClient>
+    
+
+
+  </target>
+
+  <!-- ==================== Init params tests ==================== -->
+
+  <target name="init-params" depends="init">
+    <gtest  request="GET /test/servlet/servletParam1 HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           goldenFile="${gdir}/servletParam1.txt"
+    />
+
+    <gtest  request="GET /test/servlet/servletParam2 HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           goldenFile="${gdir}/servletParam2.txt"
+    />
+
+    <gtest  request="GET /test/servlet/ServletParam HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           goldenFile="${gdir}/ServletParam.txt"
+    />
+  </target>
+
+
+  <!-- ==================== Dispatch tests ==================== -->
+    <target name="dispatch" depends="init">
+      <gtest  description="SimpleInclude"
+             request="GET /test/servlet/dispatch.SimpleIncludeServlet HTTP/1.0"
+             expectHeaders="Content-Type:text/foobar"
+             returnCode="${http.protocol} 200"
+             goldenFile="${gdir}/SimpleInclude.txt"
+       />
+      <gtest  description="SimpleForward"
+             request="GET /test/servlet/dispatch.SimpleForwardServlet HTTP/1.0"
+             expectHeaders="Content-Type:text/funky" 
+             returnCode="${http.protocol} 200"
+             goldenFile="${gdir}/SimpleForward.txt" 
+       />
+
+      <httpClient>
+          <comment>Dispatch to html error page using error-page web.xml element</comment>
+          <httpRequest path="/test/servlet/error402" />
+          <httpStatusMatch match="402" />
+          <headerMatch name="Content-Type" value="text/html" />
+          <goldenMatch file="${gdir}/error402.html.txt"/>
+      </httpClient>
+
+      <!-- Removed: the test calls RequestDispatcher.include(), and 
+           the included servlet throws an exception. 
+           Before Tomcat 3.2(3?) the exception was hidden - now we correctly
+           throw it, so include() will throw exception, and since it's not
+           catched no response should be seen. ( costin )
+        
+
+      <gtest  description="PrintWriterTest"
+             request="GET /test/servlet/dispatch.PrintWriterTest1Servlet HTTP/1.0"
+             returnCode="${http.protocol} 200"
+             responseMatch="PreInclude" 
+       />
+      <gtest  description="PrintWriterTest"
+             request="GET /test/servlet/dispatch.PrintWriterTest1Servlet HTTP/1.0"
+             returnCode="${http.protocol} 200"
+             responseMatch="PostInclude" 
+       />
+      <gtest  description="PrintWriterTest"
+             request="GET /test/servlet/dispatch.PrintWriterTest1Servlet HTTP/1.0"
+             returnCode="${http.protocol} 200"
+             responseMatch="Included servlet error: 500" 
+       />
+       End removed 
+       -->
+ 
+      <gtest  description="PrintWriterTest"
+             request="GET /test/servlet/dispatch.PrintWriterTest1Servlet HTTP/1.0"
+             returnCode="${http.protocol} 500"
+             responseMatchFile="${gdir}/PrintWriterTest.txt"
+       />
+ 
+
+      <gtest  description="Mismatch2"
+             request="GET /test/servlet/dispatch.Mismatch2 HTTP/1.0"
+             returnCode="${http.protocol} 200"
+             goldenFile="${gdir}/Mismatch2.txt" 
+       />
+
+      <gtest  description="IncludeMismatch1-1"
+             request="GET /test/servlet/dispatch.IncludeMismatch1 HTTP/1.0"
+             returnCode="${http.protocol} 200"
+             responseMatch="LINE1" 
+       />
+
+      <!-- BAD test: the included Target1 will call getWriter, 
+          and IllegalState will be thrown - and catched by the IncludeMismatch.
+          No error handler will be involved - the Dispatcher spec clearly 
+          requires include() to propagate exceptions. 
+          Previous behavior of tomcat was wrong. ( costin )
+      <gtest  description="IncludeMismatch1-2"
+             request="GET /test/servlet/dispatch.IncludeMismatch1 HTTP/1.0"
+             returnCode="${http.protocol} 200"
+             responseMatch="error: 500" 
+       />
+      -->
+
+      <gtest  description="IncludeMismatch1-3"
+             request="GET /test/servlet/dispatch.IncludeMismatch1 HTTP/1.0"
+             returnCode="${http.protocol} 200"
+             responseMatch="LINE1" 
+       />
+
+      <gtest  description="IncludeFile"
+             request="GET /test/servlet/dispatch.IncludeFileServlet HTTP/1.0"
+             returnCode="${http.protocol} 200"
+             expectHeaders="Content-Type:text/foobar" 
+             goldenFile="${gdir}/IncludeFile.txt" 
+       />
+
+      <!-- Parameter order may change 
+      <gtest  description="ForwardWithQuery"
+             request="GET /test/servlet/dispatch.ForwardWithQueryServlet?name=Sun%20Microsystems&amp;age=100000&amp;city=Cupertino HTTP/1.0"
+             returnCode="${http.protocol} 200"
+             expectHeaders="Content-Type:text/funky" 
+             goldenFile="${gdir}/ForwardWithQuery.txt" 
+       />    
+       -->
+
+    <gtest  description="SimpleRedirect"
+           request="GET /test/servlet/dispatch.SimpleRedirectServlet?/index.html HTTP/1.0"
+	   expectHeaders="Location:http://${host}${colonPort}/index.html" 
+	   returnCode="${http.protocol} 302" 
+	   />
+
+      <gtest  description="SimpleRedirect2"
+             request="GET /test/servlet/dispatch.SimpleRedirectServlet?index.html HTTP/1.0"
+             expectHeaders="Location:http://${host}${colonPort}/test/servlet/index.html" 
+             returnCode="${http.protocol} 302" 
+       />
+
+      <httpClient>
+          <comment>Get a session and then include a JSP.</comment>
+          <httpRequest path="/test/servlet/dispatch.IncludeJspWithSession" />
+          <httpStatusMatch match="200" />
+          <responseMatch match="This is an inner file"/>
+          <headerMatch name="Set-Cookie" value="JSESSIONID=" />
+      </httpClient>
+
+      <httpClient>
+          <comment>Include a JSP which uses a taglib.</comment>
+          <httpRequest path="/test/servlet/dispatch.IncludeJspWithTaglib" />
+          <httpStatusMatch match="200" />
+          <responseMatch match="This is a taglib test"/>
+      </httpClient>
+
+    </target>
+
+  <target name="session" depends="init">
+      <httpClient>
+          <comment>Get a session and then include a JSP.</comment>
+          <httpRequest 
+	    path="/test/servlet/dispatch.IncludeJspWithSession HTTP/1.0" />
+          <httpStatusMatch match="200" />
+          <responseMatch match="This is an inner file"/>
+          <headerMatch name="Set-Cookie" value="JSESSIONID=" />
+      </httpClient>
+
+    </target>
+
+  <!-- ==================== Jsp tests ==================== -->
+  <target name="jsp" depends="init">
+    <gtest request="GET /test/jsp/special-name.foo.jsp HTTP/1.0"
+	   returnCode="200"
+    />
+
+    <gtest  request="GET /test/jsp/HelloWorld.jsp HTTP/1.0"
+           goldenFile="${gdir}/HelloWorld.txt"
+    />
+
+    <gtest  request="GET /test/doesNotExist.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           magnitude="false" />
+
+    <gtest  request="GET /test/jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           description="Getting -- HTTP/1.0 302 Found"
+           magnitude="false" />
+
+    <gtest  request="GET /test/.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           magnitude="false" />
+
+    <gtest  request="GET /test/jsp/HelloWorld.jsp?????? HTTP/1.0"
+           goldenFile="${gdir}/HelloWorld.txt"
+           debug="0"
+    />
+
+    <gtest  request="GET /test/jsp/HelloWorld.jsp?a=b&amp;c=d HTTP/1.0"
+           goldenFile="${gdir}/HelloWorld.txt"
+           debug="0"
+    />
+
+    <gtest  request="GET /test/jsp/HelloWorld.jsp?&amp;&amp; HTTP/1.0"
+           goldenFile="${gdir}/HelloWorld.txt"
+    />
+
+    <gtest  request="GET /test/jsp/declaration/IntegerOverflow.jsp HTTP/1.0"
+           returnCode="${http.protocol} 500"
+           debug="0"
+    />
+
+    <gtest  request="GET /test/jsp/error/err.jsp HTTP/1.0"
+           goldenFile="${gdir}/Err.txt"
+           returnCode="${http.protocol} 200"
+    />
+
+    <gtest  request="GET /test/jsp/forward/forward.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+    />
+
+    <gtest  request="GET /test/jsp/jsptoserv/jsptoservlet.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           goldenFile="${gdir}/jsptoservlet.txt"
+    />
+
+    <gtest  request="GET /test/jsp/initDestroy.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+    />
+
+    <gtest  request="GET /test/jsp/classTest.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           goldenFile="${gdir}/classTest.txt"
+    />
+
+    <gtest  request="GET /test/jsp/import.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           goldenFile="${gdir}/import.txt"
+    />
+
+    <gtest  request="GET /test/jsp/buffer.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           goldenFile="${gdir}/buffer.txt"
+    />
+
+    <gtest  request="GET /test/jsp/buffer1.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           magnitude="false" />
+
+    <gtest  request="GET /test/jsp/buffer2.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           magnitude="false" />
+
+    <gtest  request="GET /test/jsp/buffer3.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           magnitude="false" />
+
+    <gtest  request="GET /test/jsp/buffer4.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           magnitude="false" />
+
+    <gtest  request="GET /test/jsp/comments.jsp HTTP/1.0"
+           returnCode="${http.protocol} 500"
+    />
+
+    <gtest  request="GET /test/jsp/parse.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           goldenFile="${gdir}/parse.txt"
+    />
+
+    <gtest  request="GET /test/jsp/pageInfo.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           magnitude="false" />
+
+    <gtest  request="GET /test/jsp/pageLanguage.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           magnitude="false" />
+
+    <gtest  request="GET /test/jsp/pageIsThreadSafe.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           magnitude="false" />
+
+    <gtest  request="GET /test/jsp/pageSession.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           magnitude="false" />
+
+    <gtest  request="GET /test/jsp/pageAutoFlush.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           magnitude="false" />
+
+    <gtest  request="GET /test/jsp/pageError.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+    />
+
+    <gtest  request="GET /test/jsp/pageExtends.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           magnitude="false" />
+
+    <gtest  request="GET /test/jsp/pageIsErrorPage.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           magnitude="false" />
+
+    <gtest  request="GET /test/jsp/pageContentType.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+    />
+
+    <gtest  request="GET /test/jsp/pageImport2.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           magnitude="false" />
+
+    <gtest  request="GET /test/jsp/pageImport.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           goldenFile="${gdir}/pageImport.txt"
+    />
+
+    <gtest  request="GET /test/jsp/beanTest1.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           goldenFile="${gdir}/beanTest.txt"
+    />
+
+    <gtest  request="GET /test/jsp/beanTest2.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           magnitude="false" />
+
+    <gtest  request="GET /test/jsp/beanScopePage.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+    />
+
+    <gtest  request="GET /test/jsp/beanScopeSession.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           debug="0"
+    />
+
+    <gtest  request="GET /test/jsp/implicitOut.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           goldenFile="${gdir}/implicitOut.txt"
+    />
+
+    <gtest  request="GET /test/jsp/implicitConfig.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           goldenFile="${gdir}/implicitConfig.txt"
+    />
+
+    <gtest  request="GET /test/jsp/implicitException.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           goldenFile="${gdir}/implicitException.txt"
+    />
+
+    <gtest  request="GET /test/jsp/implicitPageContext.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           goldenFile="${gdir}/implicitPageContext.txt"
+    />
+
+    <gtest  request="GET /test/jsp/implicitContext.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           goldenFile="${gdir}/implicitContext.txt"
+    />
+
+    <gtest  request="GET /test/jsp/implicitRequest.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           goldenFile="${gdir}/implicitRequest.txt"
+    />
+
+    <gtest  request="GET /test/jsp/implicitResponse.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           goldenFile="${gdir}/implicitResponse.txt"
+    />
+
+    <gtest  request="GET /test/jsp/implicitSession.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           goldenFile="${gdir}/implicitSession.txt"
+    />
+
+    <gtest  request="GET /test/jsp/implicitPageContext.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           goldenFile="${gdir}/implicitPageContext.txt"
+    />
+
+    <gtest  request="GET /test/jsp/pageInvalid.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           magnitude="false" />
+
+    <gtest  request="GET /test/jsp/pageDouble.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           magnitude="false" />
+
+    <gtest  request="GET /test/jsp/pageContent3.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+    />
+
+    <gtest  request="GET /test/jsp/bigDeclaration.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+    />
+
+    <gtest  request="GET /test/jsp/include/include.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           goldenFile="${gdir}/Include.txt"
+    />
+ 
+    <gtest  request="GET /test/jsp/chinese.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+    />
+
+   <gtest  request="GET /test/jsp/japanese.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+    />
+
+   <gtest  request="GET /test/jsp/extends1.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           magnitude="false" 
+    />
+
+   <gtest  request="GET /test/jsp/extends2.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           magnitude="false" 
+    />
+
+   <gtest  request="GET /test/jsp/extends3.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+    />
+
+   <gtest  request="GET /test/jsp/extends4.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+    />
+
+   </target>
+
+  <!-- ==================== Bad Requests ==================== -->
+  <target name="wrong_request" depends="init">
+    <gtest  request="GET /test/*.jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           magnitude="false" />
+
+    <gtest  request="GET *jsp HTTP/1.0"
+           returnCode="${http.protocol} 200"
+           magnitude="false" />
+
+    <!-- Hangs on apache - apache expects a 1.0 request 
+        gtest  request="GET /test/jsp/HelloWorld.jsp HTTP"
+           returnCode="${http.protocol} 400"
+    /-->
+
+    <!-- Hangs on apache - apache expects a 1.0 request 
+        gtest  request="GET /test/jsp/HelloWorld.jsp 1.0"
+           returnCode="${http.protocol} 400"
+    / -->
+
+    <!-- Hangs on apache - apache expects a 1.0 request 
+       gtest  request="GET /test/jsp/HelloWorld.jsp /1.0"
+           returnCode="${http.protocol} 400"
+    / -->
+
+  </target>
+
+
+   <!-- ==================== Get tests ==================== -->
+  
+   <target name="get" depends="init,init-params">
+
+      <gtest  request="GET /test/servlet/Cookie25 HTTP/1.0"
+             expectHeaders="Set-Cookie:foo=bar; Version=1; Max-Age=8640000"
+      />
+
+      <gtest  request="GET /test/servlet/ResponseError HTTP/1.0"
+             returnCode="${http.protocol} 400"
+             responseMatch="Wrong data"
+      />
+
+      <gtest description="HTTP 0.9 can't return a response code"
+	     request="GET /test/request/uri/does/not/exist"
+             returnCode="404" magnitude="false"
+      />
+
+      <gtest description="HTTP 0.9, check the body for Not found"  
+	     request="GET /test/request/uri/does/not/exist"
+             responseMatch="Not Found"
+      />
+
+      <gtest  request="GET /test/request/uri/does/not/exist HTTP/1.0"
+             returnCode="${http.protocol} 404"
+      />
+
+      <gtest  request="GET /test/"
+             returnCode="Error: "
+             magnitude="false" />
+
+      <gtest  request="GET /test/servlet HTTP/1.0"
+             returnCode="${http.protocol} 404"
+      />
+
+      <gtest  request="GET /test/servlet/ HTTP/1.0"
+             returnCode="${http.protocol} 404"
+      />
+
+      <gtest  request="GET /test/servlet/foo HTTP/1.0"
+             returnCode="${http.protocol} 404"
+      />
+
+      <gtest  request="GET /test/welcome HTTP/1.0"
+	      returnCode="${http.protocol} ${redir.status}"  />
+
+      <gtest description="Get a dir with static welcome file"
+             request="GET /test/welcome/ HTTP/1.0"
+             returnCode="${http.protocol} ${dir.status}"  />
+
+      <gtest request="GET /test/ HTTP/1.0"
+             returnCode="${http.protocol} ${dir.status}" />
+
+      <gtest  request="GET /test/jsp/ HTTP/1.0"
+              returnCode="${http.protocol} ${dir.status}"           
+	      description="Get a dir with static welcome file" />
+
+   </target>
+
+ 
+   <!-- ==================== Mappings ==================== -->
+   <target name="requestMap" depends="init" >
+      <gtest  description="/foo/bar/index.html : 1.0 : 200"
+             request="GET /test/foo/bar/index.html HTTP/1.0"
+             responseMatch="Servlet: Servlet1"
+            />
+
+      <gtest request="GET /test/foo/bar/index.bop HTTP/1.0"
+             responseMatch="Servlet: Servlet1" />
+      <!-- 
+Test if web.xml mappings are respected - /foo/bar is mapped to servlet1.
+Apache will probably fail ( special configuration is required to 
+do all mapping - this is a known problem, to be resolved by integrating
+mod_webapp into mod_jk )
+      -->
+
+      <gtest  description="/baz : 1.0 : 200"
+             request="GET /test/baz HTTP/1.0"
+             responseMatch="Servlet: Servlet2"
+            />
+
+      <gtest  description="/baz/index.html : 1.0 : 200"
+             request="GET /test/baz/index.html HTTP/1.0"
+             responseMatch="Servlet: Servlet2"
+            />
+
+      <gtest  description="/catalog : 1.0 : 200"
+             request="GET /test/catalog HTTP/1.0"
+             responseMatch="Servlet: Servlet3"
+            />
+
+      <gtest  description="/catalog/index.html : 1.0 : 200"
+             request="GET /test/catalog/index.html HTTP/1.0"
+             returnCode="${http.protocol} 404"
+             />
+
+      <gtest  description="/catalog/racecar.bop : 1.0 : 200"
+             request="GET /test/catalog/racecar.bop HTTP/1.0"
+             responseMatch="Servlet: Servlet4"
+            />
+
+      <gtest  description="/index.bop : 1.0 : 200"
+             request="GET /test/index.bop HTTP/1.0"
+             responseMatch="Servlet: Servlet4"
+            />
+   </target>
+
+   <!-- ==================== POST tests ==================== -->
+   <target name="post" depends="init" >
+      <gtest  request="POST /test/servlet/request.NotThere HTTP/1.0"
+             content="name=lightness of being"
+             returnCode="${http.protocol} 404"
+            />
+
+      <gtest  request="POST /test/servlet/request.EchoServlet HTTP/1.0"
+             content="name=lightness of being"
+             returnCode="${http.protocol} 200"
+            />
+
+      <!-- Don't bother to send bad request to web server -->
+      <gtest  request="GHOST /test/servlet/request.EchoServlet HTTP/1.0" unless="not.standalone"
+             content="name=lightness of being"
+             returnCode="${http.protocol} 50"
+            />
+
+      <!-- Hangs on apache, apache expects a 1.0 requets
+        gtest  request="POST /test/servlet/request.EchoServlet HT TP/1.0"
+             content="name=lightness of being"
+             returnCode="Error: 400"
+            /-->
+
+      <!-- tomcat will wait a request - it's the same as if the client will do a post and stop
+           transmiting.
+           XXX XXX Tomcat needs timeout 
+      <gtest  request="POST "
+             content="name=lightness of being"
+             returnCode="Error: 400"
+            />
+       -->
+
+      <gtest  request="POST /test/servlet/request.EchoServlet HTTP/1.0"
+             content=""
+             returnCode="${http.protocol} 200"
+            />
+
+      <gtest  request="POST /test/servlet HTTP/1.0"
+             content=""
+             returnCode="${http.protocol} 404"
+            />
+
+      <gtest  request="POST /test/servlet/ HTTP/1.0"
+             content=""
+             returnCode="${http.protocol} 404"
+            />
+
+      <!-- This test will cause IIS to hang -->
+      <gtest description="HTTP0.9 doesn't have a POST method" unless="not.standalone"
+	     request="POST /test/"
+             content=""
+             returnCode="${http.protocol} 400"
+	     magnitude="false"
+            />
+
+      <gtest  request="POST /test/servlet/request.EchoServlet HTTP/1.0"
+             content="name=lightness of being"
+             returnCode="${http.protocol} 200"
+            />
+
+      <gtest  request="POST /test/servlet/request.EchoServlet HTTP/1.0"
+             content="name=lightness of being,,,,,,,....###///&amp;&amp;@@@@@***"
+             returnCode="${http.protocol} 200"
+            />
+
+      <gtest  request="POST /test/servlet/request.EchoServlet HTTP/1.0"
+             content="name=lightness of being,,,,,,,....###///&amp;&amp;&amp;&amp;@@@@@***"
+             returnCode="${http.protocol} 200"
+            />
+
+      <gtest  request="POST /test/servlet/request.EchoServlet?name=sun&amp;age=2000 HTTP/1.0"
+             content="name=lightness of being,,,,,,,....###///&amp;@@@@@***"
+             returnCode="${http.protocol} 200"
+            />
+
+      <!-- I have no idea what this should return - 
+      <gtest  request="POST \ HTTP/1.0"
+             content="name=lightness of being"
+             returnCode="Error: 400"
+            />
+      -->
+
+      <gtest  request="POST /test/servlet/request.EchoServlet HTTP/1.0"
+             content="name=lightness of being"
+             returnCode="${http.protocol} 200"
+            />
+
+      <!-- Don't bother to send bad request to web server -->
+      <gtest  request="post /test/servlet/request.EchoServlet HTTP/1.0" unless="not.standalone"
+             content="name=lightness of being"
+             returnCode="${http.protocol} 50"
+            />
+
+      <!-- tolerate bad request for now
+      <gtest  request="GET http://www.javasoft.com/index.html HTTP/1.0   "
+             returnCode="${http.protocol} 400"
+            />
+      -->
+
+      <gtest  request="POST /test/servlet/request.EchoServlet HTTP/1.0"
+             headers="Content-Encoding: x-gzip"
+             content="name=lightness of being"
+             returnCode="${http.protocol} 200"
+            />
+
+      <!-- Can't be OK - we don't implement HTTP/4.4 
+       gtest  request="POST /test/servlet/request.EchoServlet  HTTP/4.4"
+             content="name=lightness of being"
+             returnCode="${http.protocol} 200"
+            / -->
+   </target>
+ 
+   <!-- ==================== Special tests ==================== -->
+
+  <target name="special" depends="init" > 
+    <gtest  description="Content Type Test"
+           request="POST /test/servlet/Post HTTP/1.0"
+           debug="10"
+           content="Test POST BODY" />
+
+    <!-- Hangs with apache - it starts with " ", apache expects a 1.0 request
+         <gtest  request="   GET   /   "
+                 returnCode="Error: "
+                 magnitude="false" / -->
+
+      <gtest  request="   GET   /   HTTP/1.0"
+             returnCode="${http.protocol} 200"
+      />
+
+      <gtest  request="GET /test/index.ht ml HTTP/1.0"
+             returnCode="${http.protocol} 400"
+      />
+
+      <gtest  request="   GET   /index.ht ml HTTP/1.0 "  
+             returnCode="${http.protocol} 400"
+      />
+
+   </target>
+
+
+   <!-- ============= unavailable servlet tests ============= -->
+   <target name="unavailable" depends="init" >
+      <gtest  request="GET /test/servlet/PermanentlyUnavailable HTTP/1.0"
+             returnCode="${http.protocol} 503"
+      />
+      <!-- again for good measure -->
+      <gtest  request="GET /test/servlet/PermanentlyUnavailable HTTP/1.0"
+             returnCode="${http.protocol} 503"
+      />
+   
+      <gtest description="First call to unavailable will fail"
+	     request="GET /test/servlet/Unavailable HTTP/1.0"
+             returnCode="${http.protocol} 503"
+      />
+
+      <gtest description="Second call to Unavailable will succed"
+	     request="GET /test/servlet/Unavailable HTTP/1.0"
+             returnCode="${http.protocol} 200"
+             responseMatch="Hello"
+      />
+   </target>
+
+   <!-- ============= restricted access tests ============= -->
+   <target name="restricted" depends="init" >
+      <gtest description="normal redirect" 
+	     request="GET /test/WEB-INF HTTP/1.0"
+             returnCode="${http.protocol} 4" />
+
+      <gtest  request="GET /test/WEB-INF/ HTTP/1.0"
+             returnCode="${http.protocol} 4" />
+
+      <gtest  request="GET /test/../test/WEB-INF HTTP/1.0"
+             returnCode="${http.protocol} 4" />
+
+      <gtest  request="GET /test/../test/WEB-INF/ HTTP/1.0"
+             returnCode="${http.protocol} 4" />
+
+      <gtest  request="GET /test/WEB-INF/classes/ HTTP/1.0"
+             returnCode="${http.protocol} 4" />
+
+      <gtest  request="GET /test/WEB-INF/classes/Post.class HTTP/1.0"
+             returnCode="${http.protocol} 4" />
+
+      <gtest  request="GET /test/WEB-INF/classes/Post.java HTTP/1.0"
+             returnCode="${http.protocol} 4" />
+
+      <!-- For Windows systems, insure blocking is not case sensitive! -->
+      <gtest  request="GET /test/web-inf HTTP/1.0"
+             returnCode="${http.protocol} 4" />
+
+      <gtest  request="GET /test/web-inf/ HTTP/1.0"
+             returnCode="${http.protocol} 4" />
+
+      <gtest  request="GET /test/../test/web-inf HTTP/1.0"
+             returnCode="${http.protocol} 4" />
+
+      <gtest  request="GET /test/../test/web-inf/ HTTP/1.0"
+             returnCode="${http.protocol} 4" />
+
+      <gtest  request="GET /test/WEB-INF/web.xml HTTP/1.0"
+             returnCode="${http.protocol} 4" />
+
+      <gtest  request="GET /test/../test/WEB-INF/web.xml HTTP/1.0"
+             returnCode="${http.protocol} 4" />
+
+      <gtest  request="GET /test/WEB-INF/web.Xml HTTP/1.0"
+             returnCode="${http.protocol} 4" />
+
+      <gtest  request="GET /test/web-inf/web.xml HTTP/1.0"
+             returnCode="${http.protocol} 4" />
+
+      <gtest  request="GET /test/META-INF HTTP/1.0"
+             returnCode="${http.protocol} 4" />
+
+      <gtest  request="GET /test/META-INF/ HTTP/1.0"
+             returnCode="${http.protocol} 4" />
+
+      <gtest  request="GET /test/../test/META-INF HTTP/1.0"
+             returnCode="${http.protocol} 4" />
+
+      <gtest  request="GET /test/../test/META-INF/ HTTP/1.0"
+             returnCode="${http.protocol} 4" />
+
+      <gtest  request="GET /test/meta-inf HTTP/1.0"
+             returnCode="${http.protocol} 4" />
+
+      <gtest  request="GET /test/META-INF/Manifest.mf HTTP/1.0"
+             returnCode="${http.protocol} 4" />
+
+      <gtest  request="GET /test/../test/META-INF/Manifest.mf HTTP/1.0"
+             returnCode="${http.protocol} 4" />
+
+      <gtest  request="GET /test/META-INF/Manifest.Mf HTTP/1.0"
+             returnCode="${http.protocol} 4" />
+
+      <gtest request="GET /test/meta-inf/Manifest.mf HTTP/1.0"
+             returnCode="${http.protocol} 4" />
+
+   </target>
+
+   <target name="security_chk_url" depends="init">
+      <httpClient >
+          <httpRequest path="/test/jsp/a/../ShowPathInfo.jsp" 
+		      method="GET" />
+          <httpStatusMatch match="200"/>
+          <responseMatch match="getRequestURI: /test/jsp/ShowPathInfo.jsp"/>
+      </httpClient>
+      <httpClient >
+          <httpRequest path="/test/jsp/../jsp/ShowPathInfo.jsp" 
+		      method="GET" />
+          <httpStatusMatch match="200"/>
+          <responseMatch match="getRequestURI: /test/jsp/ShowPathInfo.jsp"/>
+      </httpClient>
+      <httpClient >
+          <httpRequest path="/test/jsp//ShowPathInfo.jsp" 
+		      method="GET" />
+          <httpStatusMatch match="200"/>
+          <responseMatch match="getRequestURI: /test/jsp/ShowPathInfo.jsp"/>
+      </httpClient>
+      <httpClient >
+          <httpRequest path="/test/../test/jsp/a/../ShowPathInfo.jsp" 
+		      method="GET" />
+          <httpStatusMatch match="200"/>
+          <responseMatch match="getRequestURI: /test/jsp/ShowPathInfo.jsp"/>
+      </httpClient>
+      <httpClient >
+          <httpRequest path="/test/jsp/./ShowPathInfo.jsp" 
+		      method="GET" />
+          <httpStatusMatch match="200"/>
+          <responseMatch match="getRequestURI: /test/jsp/ShowPathInfo.jsp"/>
+      </httpClient>
+      <httpClient >
+          <httpRequest path="/test/jsp/a/../../jsp/ShowPathInfo.jsp" 
+		      method="GET" />
+          <httpStatusMatch match="200"/>
+          <responseMatch match="getRequestURI: /test/jsp/ShowPathInfo.jsp"/>
+      </httpClient>
+      <httpClient unless="not.standalone" >
+          <httpRequest path="/test/jsp/ShowPathInfo.jsp/." 
+		      method="GET" />
+          <httpStatusMatch match="200"/>
+          <responseMatch match="getRequestURI: /test/jsp/ShowPathInfo.jsp"/>
+      </httpClient>
+      <httpClient unless="not.standalone" >
+          <httpRequest path="/test/jsp/ShowPathInfo.jsp/foo/.." 
+		      method="GET" />
+          <httpStatusMatch match="200"/>
+          <responseMatch match="getRequestURI: /test/jsp/ShowPathInfo.jsp"/>
+          <responseMatch match="getPathInfo: null"/>
+      </httpClient>
+      <httpClient >
+          <httpRequest path="/test/ShowPathInfo.jsp/./" 
+		      method="GET" />
+          <httpStatusMatch match="404"/>
+      </httpClient>
+      <httpClient >
+          <httpRequest path="/test/jsp/ShowPathInfo.jsp;jsessionid=123" 
+		      method="GET" />
+          <httpStatusMatch match="200"/>
+          <responseMatch match="getRequestURI: /test/jsp/ShowPathInfo.jsp"/>
+      </httpClient>
+   </target>
+
+   <target name="security_chk" depends="init,security_chk_url">
+      <gtest description="This URL should return 404 Not Found"
+           request="GET /test/jsp/HelloWorld.jsp. HTTP/1.0"
+           returnCode="${http.protocol} 40" 
+      />
+
+      <gtest description="This URL should return 403 Forbidden"
+           request="GET /test/jsp/HelloWorld.jsp%2E HTTP/1.0"
+           returnCode="${http.protocol} 40" 
+      />
+
+      <httpClient >
+          <httpRequest path="/test/jsp/HelloWorld%2Ejsp" 
+		      method="GET" />
+          <httpStatusMatch match="${http.protocol} 40" if="tomcat.server" />
+          <httpStatusMatch match="${http.protocol} 200" unless="tomcat.server" />
+      </httpClient>
+
+      <gtest description="This URL should return 403 Forbidden"
+           request="GET /test/jsp/HelloWorld.jsp%252E HTTP/1.0"
+           returnCode="${http.protocol} 40" 
+      />
+
+      <httpClient >
+          <comment>This URL should return 404 Not Found (unless Netscape)</comment>
+          <httpRequest path="/test/jsp/HelloWorld.jsp/" 
+		      method="GET" />
+          <httpStatusMatch match="${http.protocol} 500" if="netscape.server"/>
+          <httpStatusMatch match="${http.protocol} 40" unless="netscape.server"/>
+      </httpClient>
+
+      <httpClient >
+          <comment>This URL should return 403 Forbidden (unless Netscape)</comment>
+          <httpRequest path="/test/jsp/HelloWorld.jsp%5C" 
+		      method="GET" />
+          <httpStatusMatch match="${http.protocol} 500" if="netscape.server"/>
+          <httpStatusMatch match="${http.protocol} 40" unless="netscape.server"/>
+      </httpClient>
+
+      <gtest description="This URL should return 403 Forbidden"
+           request="GET /test/jsp/HelloWorld.jsp%255C HTTP/1.0"
+           returnCode="${http.protocol} 40" 
+      />
+
+      <gtest description="This URL should return 404 Not Found"
+           request="GET /test/jsp/HelloWorld.jsp%20 HTTP/1.0"
+           returnCode="${http.protocol} 40" 
+      />
+
+      <gtest description="This URL should return 403 Forbidden"
+           request="GET /test/jsp/HelloWorld.jsp%2520 HTTP/1.0"
+           returnCode="${http.protocol} 40" 
+      />
+
+      <httpClient >
+          <comment>This URL should return 404 Not Found (unless Netscape)</comment>
+          <httpRequest path="/test/jsp/HelloWorld.jsp%00" 
+		      method="GET" />
+          <responseMatch match="HelloWorld" if="netscape.server" />
+          <httpStatusMatch match="${http.protocol} 200" if="netscape.server"/>
+          <httpStatusMatch match="${http.protocol} 40" unless="netscape.server"/>
+      </httpClient>
+
+      <gtest description="This URL should return 403 Forbidden"
+           request="GET /%2e%2e/%2e%2e/%00.jsp HTTP/1.0"
+           returnCode="${http.protocol} 40" 
+      />
+
+      <gtest description="This URL should return 403 Forbidden"
+           request="GET /%252e%252e/%252e%252e/%00.jsp HTTP/1.0"
+           returnCode="${http.protocol} 40" 
+           unless="not.standalone"
+      />
+
+      <gtest description="This URL should return 403 Forbidden"
+           request="GET /%2e%2e/%2e%2e/%5cLICENSE%00.jsp HTTP/1.0"
+           returnCode="${http.protocol} 40" 
+      />
+
+      <gtest description="This URL should return 403 Forbidden"
+           request="GET /%2e%2e/%2e%2e/%5cLICENSE/%00.jsp HTTP/1.0"
+           returnCode="${http.protocol} 40" 
+      />
+
+      <gtest description="This URL should return 403 Forbidden"
+           request="GET /%252e%252e/%252e%252e/%5cLICENSE%00.jsp HTTP/1.0"
+           returnCode="${http.protocol} 40" 
+      />
+      <gtest description="This URL should return 403 Forbidden"
+           request="GET /%252e%252e/%252e%252e/%5cLICENSE/%00.jsp HTTP/1.0"
+           returnCode="${http.protocol} 40" 
+      />
+
+      <gtest description="This URL should return HTML, not JSP source"
+           request="GET /test/jsp/HelloWorld.js%70 HTTP/1.0"
+           returnCode="${http.protocol} 200" 
+           goldenFile="${gdir}/HelloWorld.txt"
+      />
+
+      <gtest description="This URL should return 403 Forbidden"
+           request="GET /test/jsp/HelloWorld.js%2570 HTTP/1.0"
+           returnCode="${http.protocol} 40" 
+      />
+
+      <gtest description="This URL should return 403 Forbidden"
+           request="GET /test/jsp/HelloWorld%252Ejsp HTTP/1.0"
+           returnCode="${http.protocol} 40" 
+      />
+   </target>
+
+   <!-- Ensure use of Windows DOS devices in JSP name return 40? -->
+   <target name="dos_devices" >
+      <gtest  request="GET /test/con.jsp HTTP/1.0"
+             returnCode="${http.protocol} 40" />
+
+      <gtest  request="GET /test/aux.jsp HTTP/1.0"
+             returnCode="${http.protocol} 40" />
+
+      <gtest  request="GET /test/nul.jsp HTTP/1.0"
+             returnCode="${http.protocol} 40" />
+
+      <gtest  request="GET /test/NUL.jsp HTTP/1.0"
+             returnCode="${http.protocol} 40" />
+
+      <gtest  request="GET /test/prn.jsp HTTP/1.0"
+             returnCode="${http.protocol} 40" />
+
+      <gtest  request="GET /test/clock$$.jsp HTTP/1.0"
+             returnCode="${http.protocol} 40" />
+
+      <gtest  request="GET /test/com1.jsp HTTP/1.0"
+             returnCode="${http.protocol} 40" />
+
+      <gtest  request="GET /test/com2.jsp HTTP/1.0"
+             returnCode="${http.protocol} 40" />
+
+      <gtest  request="GET /test/com3.jsp HTTP/1.0"
+             returnCode="${http.protocol} 40" />
+
+      <gtest  request="GET /test/com4.jsp HTTP/1.0"
+             returnCode="${http.protocol} 40" />
+
+      <gtest  request="GET /test/com5.jsp HTTP/1.0"
+             returnCode="${http.protocol} 40" />
+
+      <gtest  request="GET /test/com6.jsp HTTP/1.0"
+             returnCode="${http.protocol} 40" />
+
+      <gtest  request="GET /test/com7.jsp HTTP/1.0"
+             returnCode="${http.protocol} 40" />
+
+      <gtest  request="GET /test/com8.jsp HTTP/1.0"
+             returnCode="${http.protocol} 40" />
+
+      <gtest  request="GET /test/com9.jsp HTTP/1.0"
+             returnCode="${http.protocol} 40" />
+
+      <gtest  request="GET /test/lpt1.jsp HTTP/1.0"
+             returnCode="${http.protocol} 40" />
+
+      <gtest  request="GET /test/lpt2.jsp HTTP/1.0"
+             returnCode="${http.protocol} 40" />
+
+      <gtest  request="GET /test/lpt3.jsp HTTP/1.0"
+             returnCode="${http.protocol} 40" />
+
+      <gtest  request="GET /test/lpt4.jsp HTTP/1.0"
+             returnCode="${http.protocol} 40" />
+
+      <gtest  request="GET /test/lpt5.jsp HTTP/1.0"
+             returnCode="${http.protocol} 40" />
+
+      <gtest  request="GET /test/lpt6.jsp HTTP/1.0"
+             returnCode="${http.protocol} 40" />
+
+      <gtest  request="GET /test/lpt7.jsp HTTP/1.0"
+             returnCode="${http.protocol} 40" />
+
+      <gtest  request="GET /test/lpt8.jsp HTTP/1.0"
+             returnCode="${http.protocol} 40" />
+
+      <gtest  request="GET /test/lpt9.jsp HTTP/1.0"
+             returnCode="${http.protocol} 40" />
+   </target>
+
+   <target name="writer" depends="init">
+      <httpClient>
+          <comment>Writer test, closing writer at end</comment>
+          <httpRequest path="/test/servlet/CloseWriter" />
+          <httpStatusMatch match="200" />
+          <headerMatch name="Content-Type" value="text/plain" />
+          <goldenMatch file="${gdir}/CloseWriter.txt"/>
+      </httpClient>
+      <httpClient>
+          <comment>Writer test,trying to catch recycling issues</comment>
+          <httpRequest path="/test/servlet/CloseWriter" />
+          <httpStatusMatch match="200" />
+          <headerMatch name="Content-Type" value="text/plain" />
+          <goldenMatch file="${gdir}/CloseWriter.txt"/>
+      </httpClient>
+   </target>
+
+   <target name="aaa" depends="init">
+      <httpClient>
+          <comment>Test for required authorization redirection response</comment>
+          <httpRequest path="/test/aaa/protected/index.jsp" />
+          <httpStatusMatch match="302" />
+          <headerMatch name="Location" value="http://${host}${colonPort}/test/aaa/login.jsp" />
+      </httpClient>
+
+      <!-- Insure unnormalized URL's are handled correctly -->
+      <httpClient >
+          <httpRequest path="/test/aaa/protected/a/../index.jsp" 
+		      method="GET" />
+          <httpStatusMatch match="302"/>
+          <headerMatch name="Location" value="http://${host}${colonPort}/test/aaa/login.jsp" />
+      </httpClient>
+      <httpClient >
+          <httpRequest path="/test/aaa/a/../protected/index.jsp" 
+		      method="GET" />
+          <httpStatusMatch match="302"/>
+          <headerMatch name="Location" value="http://${host}${colonPort}/test/aaa/login.jsp" />
+      </httpClient>
+      <httpClient >
+          <httpRequest path="/test/aaa//protected/index.jsp" 
+		      method="GET" />
+          <httpStatusMatch match="302"/>
+          <headerMatch name="Location" value="http://${host}${colonPort}/test/aaa/login.jsp" />
+      </httpClient>
+      <httpClient >
+          <httpRequest path="/test/../test/aaa/protected/a/../index.jsp" 
+		      method="GET" />
+          <httpStatusMatch match="302"/>
+          <headerMatch name="Location" value="http://${host}${colonPort}/test/aaa/login.jsp" />
+      </httpClient>
+      <httpClient >
+          <httpRequest path="/test/aaa/./protected/index.jsp" 
+		      method="GET" />
+          <httpStatusMatch match="302"/>
+          <headerMatch name="Location" value="http://${host}${colonPort}/test/aaa/login.jsp" />
+      </httpClient>
+      <httpClient >
+          <httpRequest path="/test/aaa/protected/../../jsp/ShowPathInfo.jsp" 
+		      method="GET" />
+          <httpStatusMatch match="200"/>
+          <responseMatch match="getRequestURI: /test/jsp/ShowPathInfo.jsp"/>
+      </httpClient>
+   </target>
+
+   <!-- ==================== Mangler tests ====================  -->
+
+   <target name="mangler" depends="init">
+      <httpClient>
+          <comment>Number as first char of JSP FileName</comment>
+          <httpRequest path="/test/jsp/mangler/1test.jsp" />
+          <httpStatusMatch match="200" />
+          <responseMatch match="Test Passed"/>
+      </httpClient>
+      <httpClient>
+          <comment>Number as first char of Directory Name</comment>
+          <httpRequest path="/test/jsp/mangler/1test/test.jsp" />
+          <httpStatusMatch match="200" />
+          <responseMatch match="Test Passed"/>
+      </httpClient>
+   </target>
+
+
+   <!-- ==================== All targets ====================  -->
+   <target name="client" depends="file,params,writer,dispatch,get,requestMap,post,wrong_request,restricted,jsp,unavailable,headers,security_chk,dos_devices,aaa,mangler">
+   </target>
+
+   <!-- ==================== Aux targets ==================== -->
+   <target name="startup">
+     <java classname="org.apache.tomcat.startup.Tomcat" args="" />
+   </target>
+
+   <target name="shutdown">
+     <java classname="org.apache.tomcat.startup.Tomcat" args="-stop" />
+   </target>
+
+   <target name="main" depends="startup,client,shutdown" />
+
+</project>
+

@@ -1,0 +1,462 @@
+$Id: readme,v 1.24 2002/02/14 14:25:53 larryi Exp $
+        
+                           Release Notes for:
+                           =========================
+                           Apache Tomcat Version 3.3
+                           =========================
+
+
+0.  TABLE OF CONTENTS:
+
+    1.  Introduction
+    2.  Installing and Running Tomcat
+    3.  Application Development Using Tomcat
+    4.  Tomcat: Past, Present, and Future
+    5.  New Features In This Release
+    6.  Known Bugs and Issues
+
+
+=============================================================================
+1.  INTRODUCTION
+
+Tomcat is a servlet container and JavaServer Pages(tm) implementation.  It may
+be used stand alone, or in conjunction with several popular web servers:
+- Apache, version 1.3 or later
+- Microsoft Internet Information Server, version 4.0 or later
+- Microsoft Personal Web Server, version 4.0 or later
+- Netscape Enterprise Server, version 3.0 or later
+
+You should read the License Agreement (in the LICENSE file of the top level
+directory), which applies to all software included in this release.
+
+
+=============================================================================
+2.  INSTALLING AND RUNNING TOMCAT
+
+Tomcat requires a Java Runtime Environment conformant to JRE 1.1 or later,
+including any Java2 platform system.  If you wish to develop applications,
+you will need a Java compiler, such as the one included in a Java Development
+Kit 1.1 or later environment, including JDKs conformant with Java2.
+
+For detailed information about installing and running Tomcat, point your
+browser at the file "tomcat_ug.html" found in the same directory as this
+file.
+
+IMPORTANT NOTE: Some major changes have occurred in Tomcat 3.3 which
+make it quite different from Tomcat 3.2.x in a number of ways.  Many of
+these differences are covered in the Tomcat User's Guide (tomcat-ug.html)
+found in Tomcat's "docs" directory.  Some of the more important changes
+include the following:
+
+- Class Loading:
+
+  Tomcat 3.3 shell and batch files ignore your CLASSPATH environment variable.
+
+  Also, Tomcat 3.3 uses a much different hierarchy of class loaders from
+  Tomcat 3.2.x. This allows Tomcat 3.3 to avoid imposing its XML parser
+  on all the web applications. In fact, for web applications that don't
+  contain an XML parser, Tomcat 3.3 can be configured to automatically
+  provide one or not provide one.  The default is to automatically provide
+  an XML parser.
+
+  For information on configuring classes, refer to the "Configuring Classes"
+  section of the Tomcat User's guide (tomcat-ug.html) in Tomcat's doc directory.
+
+- Tomcat Configuration:
+
+  Tomcat's configuration is still controlled by the server.xml file. But this
+  file will look a little different and configuration is supported by a
+  number of new features in Tomcat 3.3. Some of these new features are:
+
+  1. A modules.xml file which simplifies the syntax found in server.xml.
+
+  2. Context configurations can be specified in other files, instead of
+     server.xml.
+
+  3. Auto WAR file expansion and auto-deployment is now configurable and
+     no longer hardwired to specific directories.
+
+  4. The "conf" directory is better organized using subdirectorys. For
+     example, all auto-generated files are written to the "conf\auto"
+     directory.
+
+  5. For mod_jk based connectors, their auto-generated files are not
+     written during normal Tomcat startup.  Instead you should append
+     "jkconf" to the startup command.  This will cause Tomcat to initialize,
+     write the config files, and exit.  This may be done while Tomcat
+     is already running.  For mod_jserv, you will need to add
+     "<JservConfig />" to the server.xml file.  The
+     "conf/auto/tomcat-apache.conf" file will be written each time Tomcat
+     is started.
+
+- Enhanced mod_jk Connector
+
+  The mod_jk connector for Apache 1.3 now supports chunked input.
+
+  Important Note: The chunked input enhancement required a protocol change
+                  that makes Tomcat 3.3 incompatible with mod_jk base
+                  connectors from Tomcat 3.2.3 and earlier.  Only use
+                  connectors supplied with the Tomcat 3.3 release or the
+                  jakarta-tomcat-connectors project with Tomcat 3.3.
+
+- Tomcat Testing:
+
+  The "test" web application along with the test-tomcat.xml and associated
+  support files are not part of the binary Tomcat 3.3 distribution.  The
+  "test" web application is supplied separately as "test.war".  This file
+  may be downloaded from the "v3.3/apps" directory of the Tomcat 3.3
+  release and placed in the "webapps" directory of your installation.  Running
+  the test has been integrated into the Admin web application that is part of
+  the Tomcat 3.3 distribution.  A preliminary step to running the test is to
+  "trust" the Admin web application.  It is set to "untrusted" by default. This
+  change can be accomplished by executing the command from the TOMCAT_HOME
+  directory with JAVA_HOME set:
+
+	./bin/tomcat.sh enableAdmin    <-- Unix
+	bin\tomcat enableAdmin         <-- Windows
+
+  Start or restart Tomcat 3.3 and invoke the following URL in your browser:
+
+	http://localhost:8080/admin/test/test.jsp
+
+  and then click "Submit Query".  The build targets for the Ant based test
+  script are then listed and the tests executed.  After the tests are
+  completed, the results will appear with "FAILED Tests" listed first,
+  followed the "PASSED Tests".
+
+  If you use Jikes as the Java compiler for JSP, you will need version
+  1.14-1 or later to run all the tests without error.  Some tests will fail
+  due to Java compilation errors if an earlier Jikes compiler is used.
+  See <http://oss.software.ibm.com/developerworks/opensource/jikes/> for
+  the latest version.
+	
+  For security reasons, after you are done with the test, you should either
+  restore the Admin web application to the default "untrusted" state, or change
+  the password for the "admin" user. To restore the Admin web application to
+  the default "untrusted" state, change trusted="true" to trusted="false" in
+  the "apps-admin.xml" file found in Tomcat's "conf" directory. If you want to
+  leave the Admin web application as "trusted, you should change the password
+  for the "admin" user in the "admin-users.xml" file located in Tomcat's
+  "conf/users" directory.
+
+  You may also download the Watchdog servlet-tests.war and jsp-tests.war web
+  applications to your "webapps" directory.  These tests may be run in the
+  same fashion as the "test" web application using the following URLs:
+
+	http://localhost:8080/admin/test/watchdog-servlet.jsp
+	http://localhost:8080/admin/test/watchdog-jsp.jsp
+
+
+=============================================================================
+3.  APPLICATION DEVELOPMENT USING TOMCAT
+
+Preliminary information on using Tomcat for developing Servlet/JSP based
+applications is provided in the included Application Developer's Guide.
+Point your browser at file "doc/appdev/index.html" under the directory into
+which you unpacked the Tomcat distribution.
+
+
+=============================================================================
+4.  TOMCAT: PAST, PRESENT, AND FUTURE
+
+- Version 3.0 (released 12/1999) was the initial release of Tomcat.  In 
+addition to implementing the Java Servlet and Server Pages specification, 
+this release featured a minimal Apache connector.
+
+- Tomcat 3.1 (released 4/2000) improved the Apache connection and added 
+connector support for Netscape and IIS web servers. It also added WAR file 
+support, automatic servlet reloading, and a command line tool (jspc) to 
+compile ahead of time the JSP pages that comprise your application.  Finally, 
+version 3.1 also focused on reorganizing the code (modularization, cleanup, 
+refactoring, removal of dead code, and separation of J2EE-specific code).
+
+- Tomcat 3.2 is the first performance tune-up, and also added a few new 
+features.
+
+- Tomcat 3.3 is the completion of the modularization, cleanup, and
+refactoring that started in Tomcat 3.1.  This work carries a number of
+new features (see next section).
+
+- Tomcat 4.x is separate development from Tomcat 3.x.  It is based on the
+Catalina architecture, which is very different from the architecture of
+Tomcat 3.x.  In addition, Tomcat 4.x is the reference implementation
+for the Servlet 2.3 and JSP 1.2 specifications.
+
+
+=============================================================================
+5.  NEW FEATURES AND CHANGES IN THIS RELEASE
+
+Many new features have been added to Tomcat since the 3.2.x release.  Among the
+most important are:
+
+- The code has undergone a major refactoring effort resulting in improved
+  performance, expanded configurability, and easier to maintain code.
+
+- Auto-generated connector configuration files for mod_jk based connectors
+  defaults to being generated on demand only.  This avoids the possibility
+  of Tomcat rewritting the config file while a web server, such as Apache,
+  tries to read it.
+
+- Tag handler pooling has been added (but disabled by default).  If your JSPs
+  use a lot of custom tags then you might want to enable tag pooling to
+  increase performance.  To enable, add the TagPoolManagerInterceptor module
+  inside an application's Context section such as:
+
+    <Context path=...>
+        <!-- other modules etc... -->
+        <TagPoolManagerInterceptor/>
+    </Context>
+
+  See conf/server.xml for more information.
+
+- The Tomcat documentation directory (i.e. TOMCAT_HOME/doc) is now included
+  in the ROOT webapp and is available from a link in the root's index.html.
+
+- A "modules" directory has been added where add-on modules may be placed.
+  An add-on module is a special War file that "deploys" a module that
+  participates in Tomcat's behavior, like the modules found in the server.xml
+  file.
+
+  Note: If an add-on module affects the behavior of Tomcat with respect to
+        the Servlet2.2/JSP1.1 specifications, it invalidates Tomcat 3.3's
+        status as a reference implementation.
+
+- Many other improvements, too numerous to list.
+
+
+In addition to new features, numerous changes have occured from the
+Tomcat 3.2.x releases.  Among the more important behavior or usage
+differences are:
+
+- Your CLASSPATH environment variable is ignored by the Tomcat shell scripts
+  and batch files found in TOMCAT_HOME/bin.  The classloader scheme in
+  Tomcat 3.3 is more flexible and you now have choices concerning how
+  classes are added.  See the Configuring Classes section of the
+  Tomcat User's Guide (tomcat-ug.html) for details.
+
+- Context declarations are normally not put in the server.xml file in
+  Tomcat 3.3.  Instead, these declarations are placed XML files separate
+  from server.xml.  See apps-admin.xml and apps-examples.xml files for a
+  couple of examples of the new approach.  For backwards compatibility,
+  you may still place context declarations in the server.xml file.
+
+- The default content of the auto-generated configuration files for external
+  web servers has changed. They now generate a configuration that forwards
+  all requests for Tomcat contexts to Tomcat, including requests for static
+  files.  This a allows the configuration specified in the context's web.xml
+  file to work correctly.  Also, the default configuration generated does not
+  add servlet or JSP functionality to the web server's "root" web site.
+
+- When Tomcat is used with an external web server, such as Apache, the
+  default behavior with respect to authentication has changed.  Previously,
+  authentication was always done by the web server, with the web server
+  providing the authenticated user.  This is now configurable, with the
+  default set to Tomcat doing its own authentication.  Add
+  tomcatAuthentication="false" to the Ajp13Interceptor to use the web
+  server's authentication.
+
+- Tomcat 3.3 now validates web.xml files during start up.  You may see errors
+  previously unreported by Tomcat 3.2.x.
+
+- The tomcat-users.xml file has moved from the "conf" to the "conf/users"
+  directory.  Also, it is no longer used by the default configuration of
+  Tomcat 3.3.  It continues to be the default file used by the SimpleRealm
+  module.  Instead, of tomcat-users.xml, the SimpleRealm module in the default
+  server.xml reads global-users.xml since those users apply to all contexts.
+  The apps-examples.xml context configuration includes an additional
+  SimpleRealm for the "/examples" context that reads the example-users.xml
+  file.  Similarly, the "/admin" context includes a SimpleRealm that reads
+  the admin-users.xml file.
+
+- The Tomcat Users Guide (i.e. tomcat-ug.html) is now in the TOMCAT_HOME/doc
+  directory instead of the TOMCAT_HOME/doc/uguide directory as it Tomcat 3.2.x.
+
+- A change in the Ajp13 protocol for chunked input makes mod_jk based connectors
+  Tomcat 3.2.3 and earlier to be incompatible with Tomcat 3.3.  Only use
+  connectors from the Tomcat 3.3 release or the jakarta-tomcat-connectors project
+  with Tomcat 3.3.
+
+
+=============================================================================
+6.  KNOWN BUGS AND ISSUES
+
+6.1 Using An Absolute Path as Document Root Under Windows
+
+In the TOMCAT_HOME/conf/server.xml file, you can declare a relative or absolute
+directory pathname for the docRoot attribute.  If you wish to use an absolute
+pathname on a Windows system, you MUST include the drive letter in order to
+conform to Java's definition of an absolute path on this platform:
+
+    GOOD:  c:\mydirectory\mydocroot
+    GOOD:  c:/mydirectory/mydocroot
+    BAD:   \mydirectory\mydocroot
+    BAD:   /mydirectory/mydocroot
+
+Under Unix, absolute pathnames must begin with a slash ('/') character.
+
+6.2 Container Managed Security
+
+Tomcat 3.2 and later have an implementation of container managed security, as
+described in the Servlet API Specification, version 2.2, section 11.
+Please note the following information about this implementation:
+
+- BASIC and FORM based authentication should work correctly.  Please
+  report any bugs you encounter here at <http://nagoya.apache.org/bugzilla>.
+  The example application has a protected area defined at the following URL:
+
+	http://localhost:8080/examples/jsp/security/protected
+
+  which can be accessed by any user defined in the configuration file
+  $TOMCAT_HOME/conf/tomcat-users.xml that has been granted the
+  appropriate roles.  Form-based authentication is used by default,
+  but a commented out setting for Basic authentication is provided if
+  you wish to give it a try.
+
+  WARNING:  Basic authentication is not suitable for general security
+  use across the Internet, or across other insecure networks, because
+  usernames and passwords are sent encoded, but not encrypted, with
+  every single request.
+
+- DIGEST authentication and HTTPS client authentication (i.e. SSL)
+  are not supported in this release.
+
+6.3 Using RequestDispatcher.include() on a Welcome File
+
+Using the following technique results in a response with incorrect content:
+
+- You have a subdirectory under your document root
+  (for example "subdir/").
+
+- This subdirectory contains a welcome file that you
+  have configured to be displayed when that subdirectory
+  is requested on a URL (for example "index.html").
+
+- You request a RequestDispatcher for path "/subdir"
+  or path "/subdir/" and then call include() on it.
+
+The same problem can occur when you do a <jsp:include/> to a page "/subdir"
+or "/subdir/" as well.
+
+A workaround is to ask for a RequestDispatcher on the complete context-
+relative path of the file you wish to have displayed, such as
+"/subdir/index.html".
+
+6.4 Automatic Servlet Reloading
+
+Tomcat 3.2 and later include a feature whereby you can ask it to automatically
+reload servlet classes (loaded from either the WEB-INF/classes directory
+or a JAR file in the WEB-INF/lib directory) that have been changed.  This
+feature is experimental, and may not be completely functional.  In particular,
+changes to classes other than the servlet you are requesting do not trigger
+class reloads -- you will need to restart Tomcat to reflect changes in those
+classes.
+
+Reloading is enabled by including a reloadable="true" attribute on the
+<Context> element in the "conf/server.xml" file.  Note that automatic
+reload support is not recommended for production applications because of
+its experimental nature, and the extra overhead required to perform the
+necessary checks on every request.
+
+6.5 Avoiding "Out of environment space" errors on Windows 95/98
+
+This error can easily occur since the default amount of environment space is
+typically insufficient to run Tomcat.  Here are a couple of ways to avoid it.
+
+  A. If you use the MS-DOS Prompt to start Tomcat, execute Programs ->
+     MS-DOS Prompt.  Right-click the MS-DOS icon on the left of the title bar
+     and select Properties at the bottom of the menu.  In the MS-DOS Prompt
+     Properties dialog select the Memory tab.  In the "Initial environment:"
+     field, set a sufficiently high number.  If you are not sure, 3072 should
+     be plenty.  Click OK and close the MS-DOS Prompt window.  Execute
+     Programs -> MS-DOS Prompt again, navigate to the directory where you
+     installed Tomcat.  Set the JAVA_HOME environment variable if not set
+     already.  You should be able to execute "bin\startup" and "bin\shutdown"
+     to start and stop Tomcat without getting an "Out of environment space"
+     error.
+
+  B. If you want to start Tomcat by double clicking a batch file such as
+     startup.bat, you should right-click on the desired batch file in Windows
+     Explorer and select Properties to open the MS-DOS Prompt Properties
+     dialog.  Select the Memory tab and set the "Initial environment:" as
+     described above.  You may want to also select the Program tab and check
+     "Close on exit".  Then click OK.  A shortcut with these settings will be
+     created in same directory with the same base name as the batch file.  You
+     should be able to double-click the shortcut or the batch file to execute
+     without getting an "Out of environment space" error.  If you wish to
+     execute startup.bat and shutdown.bat in this fashion, you will need to do
+     the above for both files.  In addition, you need to provide for setting
+     JAVA_HOME.  This may be done by adding a "SET JAVA_HOME=path to your jdk"
+     line to your autoexec.bat or to the startup.bat and shutdown.bat files
+     themselves.
+
+6.6 URL's are now case sensitive on all operating systems
+
+As of Tomcat 3.2, URL's are case sensitive for all operating systems,
+including operating systems which have case insensitive file systems, such as
+Windows.  This represents a change from Tomcat 3.1, where URL's were case
+insensitive on case insensitive OS's.  This was done for a number of reasons,
+security and portability among them.
+
+A "non-portable" web application, i.e. one with case mismatches, which worked
+on a case insensitive OS under Tomcat 3.1 will show its non-portability when
+run under Tomcat 3.2 and later.
+
+This can also cause URL's that look correct to actually be incorrect.  In
+Windows Explorer, a directory whose name fits within the MS-DOS 8.3 format
+may be displayed using a "formated" name.  For example, a directory named
+"MYDIR" may display as "Mydir".  A URL like "http://localhost/mysite/Mydir/
+index.jsp" would return "File Not Found" because the correct URL would be
+"http://localhost/mysite/MYDIR/index.jsp".  If you find URL's being
+mysteriously "not found", check for case mismatch.  Use the Windows Explorer
+Properties dialog or an MS-DOS window to check the actual case of the file
+and directory names.
+
+This can cause an additional problem when Tomcat is used with a case
+insensitive web server, such as IIS, where the web server serves the static
+content.  The web server could serve a static page with mismatched case in the
+URL. If that static page contains relative links to resources served by
+Tomcat, then invoking those links would carry the mismatched case to Tomcat
+where it cause the resource not to be found.
+
+6.7 Generated Configuration Files for Web Connectors
+
+Tomcat normally generates configuration files like "mod-jk.conf" to reflect
+the contexts that are defined.  However, the generated files may not reflect
+all configuration settings found inside the web application deployment
+descriptor file (web.xml) for your web application.  The simplest solution
+to this is to forward all requests for a particular context to Tomcat, which
+is the default behavior.  If you do not forward all requests, you will need to
+configure any such settings that are relevant directly into your web
+server's configuration files.
+
+This is a known limitation of the design of the web connectors for Tomcat 3.2
+and later, and will be addressed by the introduction of the MOD_WARP connector
+in Tomcat 4.x.
+
+6.8 Limitation on Form Based Login
+
+If the pages you specify for <form-login-page> or <form-error-page> are within
+the area protected by a security constraint, Tomcat 3.3 will be unable to
+display them.  As a side effect of this problem, you will not be able to use
+a URL pattern of "/*" to protect your entire web application when using form
+based login.
+
+A workaround is to set up your web application with the form login page and
+form error page in the document root directory, place all other pages in one
+or more subdirectories, and establish security constraints to protect the
+subdirectories.
+
+6.9 Limitation on Document Base Paths
+
+Tomcat 3.3 is unable to support Windows SMB paths in a <Context> directive
+like this:
+
+        <Context path="/ctx" docBase="\\machine\share\path" />
+
+although this approach was supported in Tomcat 3.1, and is supported in
+Tomcat 4.x.  A workaround is to establish a drive mapping to "\\machine\share"
+and define your context like this:
+
+        <Context path="/ctx" docBase="r:\path" />
+
+where "r:" is mapped to this share.

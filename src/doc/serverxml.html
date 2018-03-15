@@ -1,0 +1,2846 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
+    "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+  <!-- $Id: serverxml.html,v 1.23 2002/03/19 11:48:05 larryi Exp $ -->
+  <!-- Copyright 1999-2001 Apache Software Foundation -->
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" >
+  <link rel="stylesheet" href="style.css">
+  <title>Server.xml Configuration in Tomcat 3.3</title>
+</head>
+
+<body>
+<!-- Banner element, all hail the Project! -->
+
+<table border="0" width="100%" cellspacing="0" cellpadding="0">
+      <tr>
+		<td width="50%"><a
+			href="http://jakarta.apache.org/index.html"><img
+			src="images/banner.gif" width="350" height="100"
+			alt="The Jakarta Project" border="0"></a></td>
+		<td width="50%" align="right"><img border="0" src="images/tomcat.gif" width="100" height="71" alt="The mighty Tomcat - Meow!"></td>
+      </tr>
+</table>
+
+<h1>Server.xml Configuration in Tomcat 3.3</h1>
+
+<h2>General configuration</h2>
+
+<p>Tomcat 3.3 is implemented using a set of modules. Each module has a
+number of settable properties and implements one or more 'hooks', providing a
+piece of functionality.</p>
+
+<p>The modules can be configured and assembled in several ways, but the
+default and most flexible mechanism uses XML files. Each module is described
+by an XML element, with attributes used to set module properties. The main
+configuration file is located in <code>TOMCAT_HOME/conf/server.xml</code>, used to
+configure the server. Additional <code>TOMCAT_HOME/conf/server-<i>name</i>.xml</code> files
+will be read after <code>server.xml</code>, allowing local configurations.</p>
+
+
+<h3><a name="substitution">Variable substitution</a></h3>
+
+<p>In Tomcat 3.3.1, each attribute value may use the ant-style variable
+substitution by using &quot;${<i>variable</i>}&quot; in the attribute string, i.e.
+<i>attribute</i>=&quot;<i>text</i>${<i>variable</i>}<i>text</i>&quot;. (Note: A
+bug prevented this from working in Tomcat 3.3.)</p>
+
+<p>The <i>variable</i> must specify a ContextManager property or System property,
+with ContextManager properties taking precedence.  If a matching property
+isn't found, the attribute string is left as is.  Note that the properties are
+not the same as attributes, and attributes are not accessible via variable
+substitution.</p>
+
+<p>There are two predefined ContextManager properties,
+&quot;<code>tomcat.home</code>&quot; and &quot;<code>tomcat.install</code>&quot;.
+These correspond to the ContextManager <code>home</code> and <code>installDir</code>
+attributes, respectively. There are three methdos for setting additional
+ContextManager properties.</p>
+
+<ol>
+  <li>Include a <code><i>name</i>=&quot;<i>value</i>&quot;</code>
+    specification on the ContextManager element in <code>server.xml</code>,
+    where <i>name</i> doesn't correspond to a ContextManager attribute. For
+    example:<br>
+    <pre>    &lt;ContextManager ... my.prop="myvalue" ... &gt;</pre></li>
+  <li>Include a <code>Property</code> element within the scope of the
+    ContextManager element in <code>server.xml</code>. For example:<br>
+    <pre>
+    &lt;ContextManager ... &gt;
+        &lt;Property name=&quot;my.prop&quot; value=&quot;myvalue&quot; /&gt;
+        ...
+    &lt;/ContextManager&gt;</pre>
+    This form of setting properties is logged if the ContextManager's debug
+    level is one or greater.<br><br></li>
+  <li>Include &quot;<code>-<i>name</i> <i>value</i></code>&quot; as command line
+    arguments, where <i>name</i> doesn't match any of the arguments supported
+    by the <a href="tomcat-ug.html#tomcat_task_args">&quot;start&quot; task</a>.
+    For example:<br>
+    <pre>    bin/startup.sh -my.prop myvalue</pre></li>
+</ol>
+
+<p><b>Note:</b> The property values may themselves use &quot;variable
+substitution&quot;, provided the specified property is already defined.</p>
+
+<h3>Common Parameters</h3>
+
+<p>All modules have the following common attributes:</p>
+
+<table border="1" cellpadding="2" cellspacing="0">
+  <tr valign="top">
+    <th>Attribute</th>
+    <th>Description</th>
+    <th>Default</th>
+  </tr>
+  <tr valign="top">
+    <td><p>debug</p>
+    </td>
+    <td><p>Display debug information on the module execution</p>
+    </td>
+    <td>0</td>
+  </tr>
+</table>
+
+<h2>Configuration Elements</h2>
+
+<p>Server.xml is an XML document. Most elements correspond to Tomcat modules,
+with Java setters being automatically associated with element attributes. The 
+javadoc will contain most details, in this document we focus on the common 
+and supported behaviors. </p>
+
+<h2>Parent Configuration Elements</h2>
+
+<p>The purpose of the server.xml is to define the configuration of an instance
+of the Tomcat 3.3 web server.  The parent configuration elements in the
+server.xml file represent that instance.</p>
+
+<!-- ======================================== -->
+
+<h3>Server</h3>
+
+<p>This is the main element in server.xml. It has a single child describing
+the tomcat configuration, ContextManager.</p>
+
+<h4>Examples</h4>
+<pre>&lt;Server&gt;
+   &lt;ContextManager &gt; 
+      ... ( tomcat configuration )
+   &lt;/ContextManager&gt;
+&lt;/Server&gt;</pre>
+
+<!-- ======================================== -->
+
+<h3>ContextManager</h3>
+
+<h4>Description</h4>
+
+<p>This is the main tag, used to set generic Tomcat options. The following are
+some of the childen it supports:</p>
+<dl>
+  <dt>&lt;<i>module_name</i>&gt;</dt>
+    <dd>Adds a module to the configuration. Module names are defined in
+	  modules.xml, where each tag is associated with a class name that
+	  implements the module. Each element attribute corresponds to a setter
+	  method in the implementing class.</dd>
+  <dt>&lt;Context&gt;</dt>
+    <dd>Defines a web application. This is a legacy method of specifying a
+	  web application.  It is included for backward compatibility with older
+	  Tomcats. As a rule, applications should be defined in separate config
+	  files, named apps-<i>name</i>.xml. This way you can configure your
+	  web applications without modifying your server.xml file.</dd>
+  <dt>&lt;Property name=&quot;<i>property_name</i>&quot; value=&quot;<i>property_value</i>&quot;&gt;</dt>
+    <dd>Adds arbitrary name/values to ContextManager. The properties can be
+     used for variable substitutions, instead of attributes.</dd>
+  <dt>&lt;module name=&quot;<i>module_name</i>&quot; javaClass=&quot;<i>full.class.name</i>&quot;&gt;</dt>
+    <dd>Adds a module to the configuration. All modules included in the standard
+	  distribution are defined in modules.xml, but you can define additional
+	  tags and their associated class in server.xml. This behaves like taskdef
+	  in ant.</dd>
+</dl>
+
+<h4>Attributes</h4>
+
+<table border="1" cellpadding="2" cellspacing="0">
+  <tr valign="top">
+    <th>Attribute</th>
+    <th>Description</th>
+    <th>Default</th>
+  </tr>
+  <tr valign="top">
+    <td>installDir</td>
+    <td>Base directory for tomcat installation. It is typically guessed by the 
+      startup program, but you can override it here.</td>
+    <td>TOMCAT_HOME or one level above the location of the startup script or 
+      tomcat.jar (if &quot;java -jar&quot; is used for startup).</td>
+  </tr>
+  <tr valign="top">
+    <td>workDir</td>
+    <td>Directory where temporary files will be created.  Relative paths are
+	  interpreted as relative to TOMCAT_HOME.</td>
+    <td>work</td>
+  </tr>
+  <tr valign="top">
+    <td>home</td>
+    <td>Base directory for the tomcat instance. While 'install' is used to 
+      find the libraries, 'home' is used to resolve almost all relative paths -
+      webapps, work, etc.</td>
+    <td>TOMCAT_HOME or the value guessed by the startup program.</td>
+  </tr>
+</table>
+
+<h4>Example(s)</h4>
+<pre>
+&lt;ContextManager install=&quot;/opt/tomcat&quot; workDir=&quot;/var/tomcat&quot; home=&quot;/var&quot; /&gt;
+</pre>
+
+<h2>Module Configuration Elements</h2>
+
+<p>It is the set of modules and their configuration that control the behavior
+of the Tomcat web server.  By specifying which modules and their attributes, you
+have a lot of flexibility in controlling the features of your instance of
+Tomcat.</p>
+
+<p>Note that &quot;interceptor&quot; is a name that used in the past, prior to
+the adoption of the name &quot;module&quot;.  It should be considered synonomous
+with &quot;module&quot;.  &quot;Interceptor&quot; will appear various in places,
+especially in module names and their classes.</p>
+
+<p>The list of modules below is in alphabetical order. Functionally, they may
+be grouped as follows:</p>
+
+<ul>
+  <li>Access, Authentication, and Authorization
+    <ul>
+	  <li><a href="#AccessInterceptor">AccessInterceptor</a></li>
+	  <li><a href="#CredentialsInterceptor">CredentialsInterceptor</a></li>
+	  <li><a href="#JDBCRealm">JDBCRealm</a></li>
+	  <li><a href="#SimpleRealm">SimpleRealm</a></li>
+	</ul></li>
+  <li>Configuration
+    <ul>
+	  <li><a href="#ApacheConfig">ApacheConfig</a></li>
+	  <li><a href="#AutoDeploy">AutoDeploy</a></li>
+	  <li><a href="#AutoWebApp">AutoWebApp</a></li>
+	  <li><a href="#ContextXmlReader">ContextXmlReader</a></li>
+	  <li><a href="#IISConfig">IISConfig</a></li>
+	  <li><a href="#JservConfig">JservConfig</a></li>
+	  <li><a href="#LoaderInterceptor11">LoaderInterceptor11</a></li>
+	  <li><a href="#LogSetter">LogSetter</a></li>
+	  <li><a href="#NSConfig">NSConfig</a></li>
+	  <li><a href="#PolicyLoader">PolicyLoader</a></li>
+	  <li><a href="#TrustedLoader">TrustedLoader</a></li>
+	  <li><a href="#WorkDirSetup">WorkDirSetup</a></li>
+	</ul></li>
+  <li>Generators
+    <ul>
+	  <li><a href="#ErrorHandler">ErrorHandler</a></li>
+	  <li><a href="#InvokerInterceptor">InvokerInterceptor</a></li>
+	  <li><a href="#Jdk12Interceptor">Jdk12Interceptor</a></li>
+	  <li><a href="#StaticInterceptor">StaticInterceptor</a></li>
+	</ul></li>
+  <li>Servlet 2.2 Facade
+    <ul>
+	  <li><a href="#WebXmlReader">WebXmlReader</a></li>
+	  <li><a href="#JspInterceptor">JspInterceptor</a></li>
+	  <li><a href="#Servlet22Interceptor">Servlet22Interceptor</a></li>
+	  <li><a href="#LoadOnStartupInterceptor">LoadOnStartupInterceptor</a></li>
+	  <li><a href="#TagPoolManagerInterceptor">TagPoolManagerInterceptor</a></li>
+	</ul></li>
+  <li>Loggers
+    <ul>
+	  <li><a href="#AccessLogInterceptor">AccessLogInterceptor</a></li>
+	  <li><a href="#LogEvents">LogEvents</a></li>
+	</ul></li>
+  <li>Mappers
+    <ul>
+	  <li><a href="#DecodeInterceptor">DecodeInterceptor</a></li>
+	  <li><a href="#ReloadInterceptor">ReloadInterceptor</a></li>
+	  <li><a href="#SimpleMapper1">SimpleMapper1</a></li>
+	</ul></li>
+  <li>Server
+    <ul>
+	  <li><a href="#Http10Connector">Http10Connector</a></li>
+	  <li><a href="#JniConnector">JniConnector</a></li>
+	  <li><a href="#Ajp12Connector">Ajp12Connector</a></li>
+	  <li><a href="#Ajp13Connector">Ajp13Connector</a></li>
+	</ul></li>
+  <li>Session
+    <ul>
+	  <li><a href="#SimpleSessionStore">SimpleSessionStore</a></li>
+	  <li><a href="#SessionIdGenerator">SessionIdGenerator</a></li>
+	  <li><a href="#SessionExpirer">SessionExpirer</a></li>
+	  <li><a href="#SessionId">SessionId</a></li>
+	</ul></li>
+</ul>
+
+<hr size="5">
+
+<!-- ======================================== -->
+
+<h3><a name="AccessInterceptor">AccessInterceptor</a></h3>
+
+<p><b>Type:</b> Access, Authentication, and Authorization</p>
+
+<h4>Description</h4>
+
+<p>Determines if security constraints specified in the web.xml apply to
+a request and provides the handling for BASIC and FORM authentication if
+necessary.</p>
+
+<h4>Attributes</h4>
+
+<table border="1" cellpadding="2" cellspacing="0">
+  <tr valign="top">
+    <th>Attribute</th>
+    <th>Description</th>
+    <th>Default</th>
+  </tr>
+  <tr valign="top">
+    <td>ignoreCase</td>
+    <td>Enables case insensitive operation when matching a request to a
+      security constraint.</td>
+    <td>false on Unix based systems<br>
+      true on Windows based systems</td>
+  </tr>
+</table>
+
+<h4>Example(s)</h4>
+
+<pre>
+&lt;AccessInterceptor /&gt;
+</pre>
+
+<hr size="5">
+
+<!-- ======================================== -->
+
+<h3><a name="AccessLogInterceptor">AccessLogInterceptor</a></h3>
+
+<p><b>Type:</b> Loggers</p>
+
+<h4>Description</h4>
+
+<p>Creates log files in the style of the Apache servers &quot;AccessLog&quot;.</p>
+
+<h4>Attributes</h4>
+
+<table border="1" cellpadding="2" cellspacing="0">
+  <tr valign="top">
+    <th>Attribute</th>
+    <th>Description</th>
+    <th>Default</th>
+  </tr>
+  <tr valign="top">
+    <td>logFile</td>
+    <td>Name of the log file.</td>
+    <td>logs/AccessLog</td>
+  </tr>
+  <tr valign="top">
+    <td>format</td>
+    <td>A string describing the logfile format. Possible values are
+      &quot;combined&quot; (Apache httpd combined format, default),
+      &quot;common&quot; (Apache httpd common format) or a format string like
+      <pre>
+        '%h %l %u %t &quot;%r&quot; %>s %b &quot;%{Referer}&quot; &quot;%{User-Agent}&quot;'
+        '%h %l %u %t &quot;%r&quot; %>s %b'
+      </pre>
+      (The above examples are used when &quot;combined&quot; or &quot;common&quot;
+      format is requested.) Possible patterns are:
+      <table>
+        <tr><th valign="top">%%</th>
+          <td>The percent character itself</td>
+        </tr>
+        <tr>
+          <th valign="top">%{var}</th>
+          <td>The value of <code>request.getHeader(&quot;var&quot;)</code> or
+            empty string for null.</td>
+        </tr>
+        <tr>
+          <th valign="top">%b</th>
+          <td>The value of <code>response.getContentLength()</code>.</td>
+        </tr>
+        <tr>
+          <th valign="top">%h</th>
+          <td>The value of <code>request.getRemoteHost()</code>.</td>
+        </tr>
+        <tr>
+          <th valign="top">%l</th>
+          <td>Should be the remote users name, as indicated by an
+            identd lookup. Currently it is always &quot;-&quot;.</td>
+        </tr>
+        <tr>
+          <th valign="top">%r</th>
+          <td>First line of the request submitted by the client, for
+            example
+            <pre>
+              GET /index.html?frame=main HTTP/1.0
+            </pre>
+            The first line is rebuilt from the values of
+            <code>request.getMethod()</code>,
+            <code>request.getRequestURI()</code>,
+            <code>request.getQueryString()</code> and
+            <code>request.getProtocol()</code>. It should probably
+            better be recorded while reading the headers.
+          </td>
+        </tr>
+        <tr>
+          <th valign="top">%s</th>
+          <td>The value of <code>response.getStatus()</code>.</td>
+        </tr>
+        <tr>
+          <th valign="top">%>s</th>
+          <td>The value of <code>response.getStatus()</code>.
+            Should differ between different internal requests, as
+            Apache httpd does, but this is currently not supported.</td>
+        </tr>
+        <tr>
+          <th valign="top">%t</th>
+          <td>The current time and date in the format
+            <pre>
+              [20/Apr/2001:19:45:23 0200]
+            </pre>
+          </td>
+        </tr>
+        <tr>
+          <th valign="top">%u</th>
+          <td>The value of <code>request.getRemoteUser()</code> or
+            &quot;-&quot; for null.</td>.
+        </tr>
+        <tr>
+      </table></td>
+    <td>&quot;combined&quot; format</td>
+  </tr>
+</table>
+
+<h4>Example(s)</h4>
+
+<pre>
+&lt;AccessLogInterceptor format=&quot;common&quot; /&gt;
+</pre>
+
+<hr size="5">
+
+<!-- ======================================== -->
+
+<h3><a name="Ajp12Connector">Ajp12Connector</a></h3>
+
+<p><b>Type:</b> Server</p>
+
+<h4>Description</h4>
+
+<p>Handles incoming Ajp12 requests.  Ajp12 is a protocol used by the mod_jk
+based web server connectors and the mod_jserv connector.  Also, used for
+shutting down Tomcat.</p>
+
+<h4>Attributes</h4>
+
+<table border="1" cellpadding="2" cellspacing="0">
+  <tr valign="top">
+    <th>Attribute</th>
+    <th>Description</th>
+    <th>Default</th>
+  </tr>
+  <tr valign="top">
+    <td>ajpidFile</td>
+    <td>File in which to record Ajp12 connector info and password. In
+      Tomcat 3.3.1 this setting can be overridden by a ContextManager property
+      named &quot;ajpid12&quot;.  Such a property would normally be set using
+      command line arguments.</td>
+    <td>conf/ajp12.id</td>
+  </tr>
+  <tr valign="top">
+    <td>secret</td>
+    <td>The desired shutdown password.</td>
+    <td><i>not specified</i></td>
+  </tr>
+  <tr valign="top">
+    <td>tomcatAuthentication</td>
+    <td>Enables Tomcat's authentication, ignoring any authentication from the
+      web server sending the requests.</td>
+    <td>true</td>
+  </tr>
+  <tr valign="top">
+    <td>useSecret</td>
+    <td>Enables use of a random number as the shutdown password.</td>
+    <td>false</td>
+  </tr>
+  <tr valign="top">
+    <td><b>Socket Properties</b></td>
+    <td>&nbsp;</td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr valign="top">
+    <td>address</td>
+    <td>Address to which the server socket binds.</td>
+    <td><i>null, bind on all addresses</i></td>
+  </tr>
+  <tr valign="top">
+    <td>backlog</td>
+    <td>Maximum length of the backlog queue for the server socket.</td>
+    <td>100</td>
+  </tr>
+  <tr valign="top">
+    <td>port</td>
+    <td>Port on which to receive requests.</td>
+    <td><i>no default, must be specified</i></td>
+  </tr>
+  <tr valign="top">
+    <td><b>Thread Pool Properties</b></td>
+    <td>&nbsp;</td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr valign="top">
+    <td>maxThreads</td>
+    <td>Maximum number of threads in Thread pool.</td>
+    <td>200</td>
+  </tr>
+  <tr valign="top">
+    <td>maxSpareThreads</td>
+    <td>Maximun number of spare threads.  Unused threads will be terminated as
+      needed to keep the number of spare threads under this number.</td>
+    <td>50</td>
+  </tr>
+  <tr valign="top">
+    <td>minSpareThreads</td>
+    <td>Minimum number of spare threads. Additional threads will be created
+      as needed to keep the number of spare threads up to this number.</td>
+    <td>4</td>
+  </tr>
+  <tr valign="top">
+    <td>pools</td>
+    <td>Enables use of a Thread pool.</td>
+    <td>true</td>
+  </tr>
+</table>
+
+<h4>Example(s)</h4>
+
+<pre>
+&lt;Ajp12Connector port=&quot;8007&quot; ajpidFile=&quot;conf/ajp12_2.id&quot; /&gt;
+</pre>
+
+<h4>Additional note:</h4>
+
+<p>If using <em>Ajp12Connector</em> to shutdown Tomcat, the minimum of 2
+threads have to be configured, or the shutdown will not be successful. Default
+configuration (no <em>maxThreads</em>) configures more then 2 threads and
+should work fine.</p>
+
+<p>You need two threads since one is always supposed to be listening, and the
+other does the actual shutting down.  Since the shutdown thread tries to
+unblock the listening thread, it hangs if there isn't anyone listening.</p>
+
+<hr size="5">
+
+<!-- ======================================== -->
+
+<h3><a name="Ajp13Connector">Ajp13Connector</a></h3>
+
+<p><b>Type:</b> Server</p>
+
+<h4>Description</h4>
+
+<p>Handles incoming Ajp13 requests.  Ajp13 is a protocol used by the mod_jk
+based web server connectors.</p>
+
+<p>In Tomcat 3.3.1, some attributes were added for supporting password protected
+shutdown using Ajp13. This feature is actived by setting the
+<code>shutdownEnable</code> to <code>true</code>, or setting a password using
+the <code>secret</code> or <code>useSecret</code> attributes. Also, if a
+password is set, authentication of Ajp13 connections can also be performed.
+This feature requires the <code>authenticateRequests</code> attribute be set
+<code>true</code> in addition to a password, and the mod_jk based
+connector support this feature. The connectors available with Tomcat 3.3.x do
+not support this feature. Connectors that do support this feature will be made
+available through the jakarta-tomcat-connectors project.</p>
+
+<h4>Attributes</h4>
+
+<table border="1" cellpadding="2" cellspacing="0">
+  <tr valign="top">
+    <th>Attribute</th>
+    <th>Description</th>
+    <th>Default</th>
+  </tr>
+  <tr valign="top">
+    <td>ajpidFile<br><b>[Tomcat 3.3.1]</td>
+    <td>File in which to record Ajp13 connector info and password.  This
+      setting can be overridden by a ContextManager property named
+      &quot;ajpid13&quot;.  Such a property would normally be set using a
+      command line argument.</td>
+    <td>conf/ajp13.id</td>
+  </tr>
+  <tr valign="top">
+    <td>authenticateConnection<br><b>[Tomcat 3.3.1]</td>
+    <td>If true and a password has been set, password checking is performed on
+        the first Ajp13 request of a newly opened connection. If the password
+        doesn't match, the request is ignored and the connection closed.  If
+        they match, the connection is &quot;authenticated&quot; and the current
+        and future requests on that connection are processed normally. If false
+        or a password isn't set, password checking of the Ajp13 connection is
+        disabled. The password is set using either the <code>secret</code> or
+        <code>useSecret</code> attributes. This feature also requires a mod_jk
+        based connector that supports sending the password.  The connectors
+        available with Tomcat 3.3.x do not support this feature.</td>
+    <td>false</td>
+  </tr>
+  <tr valign="top">
+    <td>secret<br><b>[Tomcat 3.3.1]</td>
+    <td>The desired shutdown password. If set, the <code>shutDownEnable</code>
+        attribute is automatically set <code>true</code>.  The password can
+        also be used for authentication of Ajp13 connections if supported by the
+        mod_jk based connector. The connectors supplied with Tomcat 3.3.x do
+        not support this feature.</td>
+    <td><i>not specified</i></td>
+  </tr>
+  <tr valign="top">
+    <td>shutDownEnable<br>
+        <br>
+        shutdownEnable<br><b>[Tomcat 3.3.1]</b></td>
+    <td>Enable shutdown signal via this connector.  This attribute is
+        automatically set <code>true</code> if a password is set using the
+        <code>secret</code> or <code>useSecret</code> attributes.</td>
+    <td>false</td>
+  </tr>
+  <tr valign="top">
+    <td>tomcatAuthentication</td>
+    <td>Enables Tomcat's authentication, ignoring any authentication from the
+      web server sending the requests. This means that the user returned by
+      HttpServletRequest.getRemoteUser() will be the user authenticated locally
+      within Tomcat.  If you are using Tomcat with a web server, such as Apache,
+      and you want to use the user authenticated by the web server, set this
+      attribute <code>false</code>.</td>
+    <td>true</td>
+  </tr>
+  <tr valign="top">
+    <td>useSecret<br><b>[Tomcat 3.3.1]</td>
+    <td>Enables use of a random number as the shutdown password.  If set, the
+        <code>shutDownEnable</code> attribute is automatically set
+        <code>true</code>.  The password can also be used for authentication of
+        Ajp13 requests if supported by the mod_jk based connector. The
+        connectors supplied with Tomcat 3.3.x do not support this feature.</td>
+    <td>false</td>
+  </tr>
+  <tr valign="top">
+    <td><b>Socket Properties</b></td>
+    <td>&nbsp;</td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr valign="top">
+    <td>address</td>
+    <td>Address to which the server socket binds.</td>
+    <td><i>null, bind on all addresses</i></td>
+  </tr>
+  <tr valign="top">
+    <td>backlog</td>
+    <td>Maximum length of the backlog queue for the server socket.</td>
+    <td>100</td>
+  </tr>
+  <tr valign="top">
+    <td>port</td>
+    <td>Port on which to receive requests.</td>
+    <td><i>no default, must be specified</i></td>
+  </tr>
+  <tr valign="top">
+    <td><b>Thread Pool Properties</b></td>
+    <td>&nbsp;</td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr valign="top">
+    <td>maxThreads</td>
+    <td>Maximum number of threads in Thread pool.</td>
+    <td>200</td>
+  </tr>
+  <tr valign="top">
+    <td>maxSpareThreads</td>
+    <td>Maximun number of spare threads.  Unused threads will be terminated as
+      needed to keep the number of spare threads under this number.</td>
+    <td>50</td>
+  </tr>
+  <tr valign="top">
+    <td>minSpareThreads</td>
+    <td>Minimum number of spare threads. Additional threads will be created
+      as needed to keep the number of spare threads up to this number.</td>
+    <td>4</td>
+  </tr>
+  <tr valign="top">
+    <td>pools</td>
+    <td>Enables use of a Thread pool.</td>
+    <td>true</td>
+  </tr>
+</table>
+
+<h4>Example(s)</h4>
+
+<pre>
+&lt;Ajp13Connector port=&quot;8009&quot; tomcatAuthentication=&quot;false&quot; /&gt;
+</pre>
+
+<hr size="5">
+
+<!-- ======================================== -->
+
+<h3><a name="ApacheConfig">ApacheConfig</a></h3>
+
+<p><b>Type:</b> Configuration</p>
+
+<h4>Description</h4>
+
+<p>Generate configuration file for mod_jk to be included in Apache's httpd.conf.</p>
+
+<p>For additional information on connecting Tomcat to Apache via mod_jk, see the
+<a href="mod_jk-howto.html">Working with mod_jk</a> document.</p>
+
+<p><b>Important Note:</b> The configuration files are not written as part of a
+normal startup of Tomcat.  To generate the configuration files on demand,
+append:</p>
+<pre>    jkconf</pre>
+<p>or</p>
+<pre>    -jkconf</pre>
+<p>to the startup command.  Tomcat will initialize sufficiently to write the
+configuration files and then exit. This may be done while Tomcat 3.3 is running.
+To generate the configuration files during normal startup, add:</p>
+<pre>    jkconf=&quot;true&quot;</pre>
+<p>to the <code>&lt;ContextManager ... &gt;</code> element in the
+<code>server.xml</code> file.</p>
+
+<h4>Attributes</h4>
+
+<table border="1" cellpadding="2" cellspacing="0">
+  <tr valign="top">
+    <th>Attribute</th>
+    <th>Description</th>
+    <th>Default</th>
+  </tr>
+  <tr valign="top">
+    <td>configHome</td>
+    <td>Default parent directory for the following paths. Ignored whenever any
+      of the following paths is absolute.</td>
+    <td>TOMCAT_HOME</td>
+  </tr>
+  <tr valign="top">
+    <td>jkConfig</td>
+    <td>Path to use for writing Apache mod_jk configuration file.</td>
+    <td>conf/auto/mod_jk.conf</td>
+  </tr>
+  <tr valign="top">
+    <td>workersConfig</td>
+    <td>Path to workers.properties file used by mod_jk.</td>
+    <td>conf/jk/workers.properties</td>
+  </tr>
+  <tr valign="top">
+    <td>modJk</td>
+    <td>Path to Apache mod_jk plugin file.</td>
+    <td>Windows: modules/mod_jk.dll<br>
+      Netware: modules/mod_jk.nlm<br>
+      Unix and all others: libexec/mod_jk.so</td>
+  </tr>
+  <tr valign="top">
+    <td>jkLog</td>
+    <td>Path to log file to be used by mod_jk.</td>
+    <td>logs/mod_jk.log</td>
+  </tr>
+  <tr valign="top">
+    <td>jkDebug</td>
+    <td>JK Loglevel setting.  May be debug, info, error, or emerg.</td>
+    <td>emerg</td>
+  </tr>
+  <tr valign="top">
+    <td>jkWorker</td>
+    <td>The desired worker. Must be set to one of the workers defined in the
+      workers.properties file. &quot;ajp12&quot;, &quot;ajp13&quot; or
+      &quot;inprocess&quot; are the workers found in the default
+      workers.properties file.</td>
+    <td>Defaults to &quot;ajp13&quot; if an Ajp13Connector is in use,
+      otherwise it defaults to &quot;ajp12&quot;.</td>
+  </tr>
+  <tr valign="top">
+    <td>forwardAll</td>
+    <td>If <code>true</code>, forward all requests to Tomcat. This helps ensure that all the
+      behavior configured in the web.xml file functions correctly.  If <code>false</code>,
+      let Apache serve static resources. Warning: When <code>false</code>, some configuration
+      in the web.xml may not be duplicated in Apache.  Review the mod_jk
+      configuration file to see the actual configuration being set in Apache.</td>
+    <td>true</td>
+  </tr>
+  <tr valign="top">
+    <td>noRoot</td>
+    <td>If <code>true</code>, the root context is not mapped to Tomcat. If <code>false</code> and
+	  forwardAll is <code>true</code>, all requests to the root context are mapped to Tomcat.
+	  If <code>false</code> and forwardAll is <code>false</code>, only JSP and servlets requests to the
+	  root context are mapped to Tomcat. When <code>false</code>, to correctly serve
+	  Tomcat's root context in the default host you must also modify the
+	  DocumentRoot setting in Apache's httpd.conf file to point to Tomcat's root
+	  context directory. Otherwise some content, such as Apache's index.html,
+	  will be served by Apache before mod_jk gets a chance to claim the request
+	  and pass it to Tomcat.  If a root context is assigned to a virtual host,
+	  then the DocumentRoot is automatically included in the configuration for
+	  that virtual host.</td>
+    <td>true</td>
+  </tr>
+</table>
+
+<h4>Example(s)</h4>
+
+<pre>
+&lt;ApacheConfig forwardAll=&quot;true&quot; noRoot=&quot;false&quot; /&gt;
+</pre>
+
+<hr size="5">
+
+<!-- ======================================== -->
+
+<h3><a name="AutoDeploy">AutoDeploy</a></h3>
+
+<p><b>Type:</b> Configuration</p>
+
+<h4>Description</h4>
+
+<p>Automatically expands WAR files on startup.</p>
+
+<p><b>Note:</b> If the <code>redeploy</code> attribute is <code>true</code> and
+a <a href="#ReloadInterceptor">ReloadInterceptor</a> is present, then WAR
+files will re-deploy automatically while Tomcat 3.3 is running.</p>
+
+<h4>Attributes</h4>
+
+<table border="1" cellpadding="2" cellspacing="0">
+  <tr valign="top">
+    <th>Attribute</th>
+    <th>Description</th>
+    <th>Default</th>
+  </tr>
+  <tr valign="top">
+    <td>source</td>
+    <td>Directory where &quot;.war&quot; files are located.</td>
+    <td>${tomcat.home}/webapps</td>
+  </tr>
+  <tr valign="top">
+    <td>target</td>
+    <td>Directory where .war files will be expanded</td>
+    <td>${tomcat.home}/webapps</td>
+  </tr>
+  <tr>
+    <td>redeploy</td>
+    <td>Check if the .war file is changed and re-deploy. This works in the
+      same way as reloading.</td>
+    <td>false</td>
+  </tr>
+</table>
+
+<h4>Example(s)</h4>
+
+<pre>
+&lt;AutoDeploy source=&quot;webapps&quot; target=&quot;webapps&quot; /&gt;
+</pre>
+
+<hr size="5">
+
+<!-- ======================================== -->
+
+<h3><a name="AutoWebApp">AutoWebApp</a></h3>
+
+<p><b>Type:</b> Configuration</p>
+
+<h4>Description</h4>
+
+<p>Automatically adds web application contexts from a directory.</p>
+
+<h4>Attributes</h4>
+
+<table border="1" cellpadding="2" cellspacing="0">
+  <tr valign="top">
+    <th>Attribute</th>
+    <th>Description</th>
+    <th>Default</th>
+  </tr>
+  <tr valign="top">
+    <td>dir
+    </td>
+    <td>Directory from which to load the web applictions. Relative paths
+      are interpreted as relative to TOMCAT_HOME.</td>
+    <td>webapps</td>
+  </tr>
+  <tr valign="top">
+    <td>flat</td>
+    <td>Each dir will be treated as a webapp in the same host. If <code>false</code>,
+      each dir will be treated as a host name and its subdirs as
+      web applications. You can add apps to multiple virtual hosts. </td>
+    <td>true</td>
+  </tr>
+  <tr valign="top">
+    <td>host</td>
+    <td>Virtual host into which each application will be deployed.<br>
+        <b>Note:</b> If this attribute is specified in <code>server.xml</code>,
+        the handling for <code>hostChar</code> and <code>hostDotChar</code> is
+        disabled.</td>
+    <td>DEFAULT</td>
+  </tr>
+  <tr valign="top">
+    <td>hostChar<br><b>[Tomcat 3.3.1]</td>
+    <td>Character used to designate the end of the host portion of the
+      directory name. For example, a directory named &quot;mydomain@myapp&quot;
+      would deploy to virtual host &quot;mydomain&quot; as the &quot;/myapp&quot;
+      context.  Deriving a host name from the directory name is disabled if
+      the <code>host</code> attribute is specified in <code>server.xml</code>.
+      Also see the <code>hostDotChar</code> attribute for including periods in
+      the host name.<br>
+      <b>Note:</b> This attribute was implemented, but not configurable in
+      Tomcat 3.3. However, a bug in Tomcat 3.3 makes this feature unusable.  The
+      '@' character is incorrectly included in the context name.  This bug has
+      been corrected in Tomcat 3.3.1.</td>
+    <td>@</td>
+  </tr>
+  <tr valign="top">
+    <td>hostDotChar<br><b>[Tomcat 3.3.1]</td>
+    <td>Character used as a substitute for periods in the host portion of the
+      directory name.  For example, a directory named
+      &quot;www_mydomain_com@myapp&quot; would deploy to virtual host
+      &quot;www.mydomain.com&quot; as the &quot;/myapp&quot; context.  Also see
+      the <code>hostChar</code> attribute for designating the end of the host
+      name.<br>
+      <b>Note:</b> This attribute was implemented, but not configurable in
+      Tomcat 3.3. However, a bug in the handing for <code>hostChar</code> in
+      Tomcat 3.3 makes this feature unusable. It is fully funtional in
+      Tomcat 3.3.1.</td>
+    <td>_</td>
+  </tr>
+  <tr valign="top">
+    <td>ignoreDot</td>
+    <td>Ignore dirs starting with '.'</td>
+    <td>true</td>
+  </tr>
+  <tr valign="top">
+    <td>pathSlashChar<br><b>[Tomcat 3.3.1]</td>
+    <td>Character used as a substitute for slashes in the context path portion
+      of the directory name.  For example, a directory named
+      &quot;my_app&quot; would deploy to the default host as the
+      &quot;/my/app&quot; context.<br>
+      <b>Note:</b> This attribute was implemented, but not configurable in
+      Tomcat 3.3.</td>
+    <td>_</td>
+  </tr>
+  <tr valign="top">
+    <td>prefix<br><b>[Tomcat 3.3.1]</b></td>
+    <td>Prefix to add to the context path for each deployed web application.
+      The context path will consist of the prefix followed subdirectory name.</td>
+    <td><i>empty string</i></td>
+  </tr>
+  <tr valign="top">
+    <td>reloadable</td>
+    <td>If true, reloading will be enabled by default for each context.  If
+        false, reloading will be disabled by default for each context.  This
+        setting, enabled or disabled, may be overridden in an explicit
+        context declaration.</td>
+    <td>true</td>
+  </tr>
+</table>
+
+<p><b>Note:</b> The special directory name handling controlled by
+<code>hostChar</code>, <code>hostDotChar</code>, and <code>pathSlashChar</code>
+is always enabled. If you wish to include '_' characters in a web application
+directory name, disable the feature by redefining the <code>pathSlashChar</code>
+to an empty string.</p>
+
+<h4>Example(s)</h4>
+
+<pre>
+  &lt;AutoWebApp dir=&quot;webapps&quot; host=&quot;DEFAULT&quot; /&gt;
+  &lt;AutoWebApp dir=&quot;myhost&quot; host=&quot;myhost.com&quot; /&gt;
+  &lt;AutoWebApp dir=&quot;webapps&quot; pathSlashChar="" /&gt;
+</pre>
+
+<hr size="5">
+
+<!-- ======================================== -->
+
+<h3><a name="ContextXmlReader">ContextXmlReader</a></h3>
+
+<p><b>Type:</b>Configuration</p>
+
+<h4>Description</h4>
+
+<p>Reads the XML files that define contexts to
+be served by Tomcat.  You specify a single file to read.  However, in addition
+to that file, all other files in the same directory will be read that match the
+pattern &quot;<i>base</i>-*.xml&quot;, where <i>base</i> is the base name (i.e.
+name without extension) of the file you specified.  Each file may configure one or more
+contexts.  Where the context matches a context automatically created by the
+<a href="#AutoWebApp">AutoWebApp</a> module, the configuration file will override
+the default context settings.</p>
+
+<p>For details on the syntax of the context configuration file, refer to the
+<a href="tomcat-ug.html#customizing_contexts">Adding and Customizing Contexts</a>
+section of the <a href="tomcat-ug.html">Tomcat 3.3 Users Guide</a>.</p>
+
+<p><b>Note:</b> In Tomcat 3.3.1, ant-style variable substitution is supported
+in the XML files. Details are included in the &quot;Adding and Customizing Contexts&quot;
+section mentioned above.</p>
+
+<h4>Attributes</h4>
+
+<table border="1" cellpadding="2" cellspacing="0">
+  <tr valign="top">
+    <th>Attribute</th>
+    <th>Description</th>
+    <th>Default</th>
+  </tr>
+  <tr valign="top">
+    <td>config</td>
+    <td>Context configuration file to read.  It may configure one or more
+      contexts.</td>
+    <td>conf/server.xml</td>
+  </tr>
+</table>
+
+<h4>Example(s)</h4>
+
+<pre>
+  &lt;ContextXmlReader config=&quot;conf/myapps.xml&quot; /&gt;
+</pre>
+
+<hr size="5">
+
+<!-- ======================================== -->
+
+<h3><a name="CredentialsInterceptor">CredentialsInterceptor</a></h3>
+
+<p><b>Type:</b> Access, Authentication, and Authorization</p>
+
+<h4>Description</h4>
+
+<p>Extracts the user name and password from a request and makes the information
+available for another module to perform the authentication. It currently
+supports extracting user name and passwords from BASIC and FORM based
+authetication.</p>
+
+<p>This module must appear prior to the &quot;realm&quot; module that performs
+the authentication.</p>
+
+<h4>Attributes</h4>
+
+<p>This module has no user settable attributes.</p>
+
+<h4>Example(s)</h4>
+
+<pre>
+&lt;CredentialsInterceptor /&gt;
+</pre>
+
+<hr size="5">
+
+<!-- ======================================== -->
+
+<h3><a name="DecodeInterceptor">DecodeInterceptor</a></h3>
+
+<p><b>Type:</b> Mappers</p>
+
+<h4>Description</h4>
+
+<p>Handles the task of establishing the encoding of a request. It also handles
+optionally normalizing the request and optionally checking the request for
+unsafe escape sequences.</p>
+
+<h4>Attributes</h4>
+
+<table border="1" cellpadding="2" cellspacing="0">
+  <tr valign="top">
+    <th>Attribute</th>
+    <th>Description</th>
+    <th>Default</th>
+  </tr>
+  <tr valign="top">
+    <td>defaultEncoding</td>
+    <td>Server wide default encoding to use. When set, all requests will
+      default to this encoding if the encoding can't be determined or an
+      appropriate guess isn't available.  If <code>null</code>, a request's
+      internal default of ISO-8859-1 remains in effect.</td>
+    <td>null, which indirectly defaults to ISO-8859-1</td>
+  </tr>
+  <tr valign="top">
+    <td>useSessionEncoding</td>
+    <td>Enables use of the encoding of the response as default for the next
+      request. This parameter if <code>true</code> can affect the value returned
+      by ServletRequest.getCharacterEncoding(). If the encoding hasn't been
+      previously specified, a request attribute corresponding to 
+      charsetAttribute has not been found, and a session is available, then
+      getCharacterEncoding() will return the character encoding of the last
+      response sent for this session.</td>
+    <td>true</td>
+  </tr>
+  <tr valign="top">
+    <td>charsetAttribute</td>
+    <td>The name of the URL attribute to use for two alternate ways of specifying
+      character encoding. First, you may specify the encoding by including
+      &quot;;<i>charsetAttribute</i>=<i>encoding</i> in the URL. For example,
+      &quot;http://localhost:8080/myapp/index.jsp;charset=UTF-8&quot; would
+      specify the encoding as <code>UTF-8</code>. The special attribute is
+      removed from the URI, so it is not visible to normal request handling.
+      Second, if the encoding has not been previously specified, then
+      handing for ServletRequest.getCharacterEncoding() will check for a
+      request attribute with the charsetAttribute name and return that encoding
+      if found.</td>
+    <td>charset</td>
+  </tr>
+  <tr valign="top">
+    <td>normalize</td>
+    <td>Normalize the request URI to remove occurrences of &quot;//&quot;,
+      &quot;/./&quot;, and &quot;/<i>x</i>/../&quot;. Also remove ending
+      &quot;/.&quot; and &quot;/<i>x</i>/..&quot;</td>
+    <td>true</td>
+  </tr>
+  <tr valign="top">
+    <td>safe</td>
+    <td>Enables checking for unsafe encodings. These are %25 ('%'), %2E ('.'),
+      %2F ('/'), and %5C ('\').  If any are found in the URI, the request is
+      considered &quot;unsafe&quot; and a 403 Forbidden error is returned.</td>
+    <td>true</td>
+  </tr>
+  <tr valign="top">
+    <td>saveOriginal</td>
+    <td>If <code>true</code>, a copy of the original request URI is saved
+      before it is decoded. This saved copy is later used as the return value
+      HttpServletRequest.getRequestURI(). If <code>false</code>, then
+      HttpServletRequest.getRequestURI() returns a re-encoded version of the
+      decoded request URI.  Setting this attribute to <code>true</code> most
+      closely follows the Servlet 2.2 spec.  However, <code>false</code> is
+      the default because <code>true</code> can't be implemented when
+      Tomcat is connected to Netscape Web Server 4.1 or earlier.  The original
+      un-escaped request URI isn't made available to the connector.  Also,
+      the IIS connector that shipped with Tomcat 3.3(a) did not support
+      passing the original request URI, though the current one does, using
+      the <code>uri_select</code> setting.</td>
+    <td>false</td>
+  </tr>
+</table>
+
+<h4>Example(s)</h4>
+
+<pre>
+&lt;DecodeInterceptor useSessionEncoding=&quot;true&quot; &gt;
+</pre>
+
+<hr size="5">
+
+<!-- ======================================== -->
+
+<h3><a name="ErrorHandler">ErrorHandler</a></h3>
+
+<p><b>Type:</b> Generator</p>
+
+<h4>Description</h4>
+
+<p>Handles response generation when a request encounters an error.  Calls the
+appropriate error handler if specified, or generates the default
+error response if not specified.</p>
+
+<h4>Attributes</h4>
+
+<table border="1" cellpadding="2" cellspacing="0">
+  <tr valign="top">
+    <th>Attribute</th>
+    <th>Description</th>
+    <th>Default</th>
+  </tr>
+  <tr valign="top">
+    <td>defaultRedirectStatus</td>
+    <td>Sets the default status code for use by the RedirectHandler if as
+        status code has not already been set.  It may be set to &quot;301&quot;
+        or &quot;302&quot;. This primarily affects the status code used
+         when the <a href="#StaticInterceptor">StaticInterceptor</a> module
+         redirects a &quot;directory&quot; URL that doesn't end with a '/' and
+         redirects to welcome files.</td>
+    <td>301</td>
+  </tr>
+  <tr valign="top">
+    <td>showDebugInfo</td>
+    <td>Enables the inclusion of extra information in the default error output,
+      such as stack traces. This extra information can expose data about
+      the internal operation of Tomcat. It should be disabled in production
+      environments.</td>
+    <td>true</td>
+  </tr>
+</table>
+
+<h4>Example(s)</h4>
+
+<pre>
+&lt;ErrorHandler showDebugInfo=&quot;false&quot; /&gt;
+</pre>
+
+<hr size="5">
+
+<!-- ======================================== -->
+
+<h3><a name="Http10Connector">Http10Connector</a></h3>
+
+<p><b>Type:</b> Server</p>
+
+<h4>Description</h4>
+
+<p>Handles incoming HTTP, or optionally HTTPS, requests.</p>
+
+<h4>Attributes</h4>
+
+<table border="1" cellpadding="2" cellspacing="0">
+  <tr valign="top">
+    <th>Attribute</th>
+    <th>Description</th>
+    <th>Default</th>
+  </tr>
+  <tr valign="top">
+    <td>reportedname</td>
+    <td>Specifies the string to use for the &quot;Server&quot; header</td>
+    <td>null, <i>use default Tomcat server string</i></td>
+  </tr>
+  <tr valign="top">
+    <td>socketCloseDelay<br><b>[Tomcat 3.3.1]</b></td>
+    <td>Specifies the number of milliseconds to delay before closing the socket
+      after processing a request.  If negative, the delay is disabled. Setting
+      a value greater or equal to zero is intended to help with diagnosing
+      client errors resulting from unread data in the body of the HTTP request.
+      If this unread data arrives just before or during the closing of the
+      socket, the client may see a &quot;Connection aborted by peer&quot; error.</td>
+    <td>-1</td>
+  </tr>
+  <tr valign="top">
+    <td><b>Connection Properties</b></td>
+    <td>&nbsp;</td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr valign="top">
+    <td>secure</td>
+    <td>Enables use of a SSL socket factory and act as an HTTPS server.</td>
+    <td>false</td>
+  </tr>
+  <tr valign="top">
+    <td>keystore</td>
+    <td>Keystore containing the Server certificate</td>
+    <td>PureTLS: server.pem<br>
+        JSSE: .keystore in directory specified by the user.home System property</td>
+  </tr>
+  <tr valign="top">
+    <td>keypass</td>
+    <td>Password to the keystore.</td>
+    <td>changeit</td>
+  </tr>
+  <tr valign="top">
+    <td>clientauth</td>
+    <td>Enables requirement for client authentication.</td>
+    <td>false</td>
+  </tr>
+  <tr valign="top">
+    <td><b>Socket Properties</b></td>
+    <td>&nbsp;</td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr valign="top">
+    <td>address</td>
+    <td>Address to which the server socket binds.</td>
+    <td><i>null, bind on all addresses</i></td>
+  </tr>
+  <tr valign="top">
+    <td>backlog</td>
+    <td>Maximum length of the backlog queue for the server socket.</td>
+    <td>100</td>
+  </tr>
+  <tr valign="top">
+    <td>port</td>
+    <td>Port on which to receive requests.</td>
+    <td><i>no default, must be specified</i></td>
+  </tr>
+  <tr valign="top">
+    <td>SSLImplementation<br><b>[Tomcat 3.3.1]</b></td>
+    <td>Class which implements the
+        <code>org.apache.tomcat.util.net.SSLImplementation</code> interface.
+        This setting controls which SSL support is used by secure connections.
+        Currently supported are:<br>
+        <ol>
+        <li>PureTLS - specify
+            <code>org.apache.tomcat.util.net.PureTLSImplementation</code></li>
+        <li>JSSE - specify
+            <code>org.apache.tomcat.util.net.JSSEImplementation</code></li>
+        </ol></td>
+    <td><i>not set</i><br>
+        default behavior will detect PureTLS and JSSE and choose the one
+        available, or PureTLS if both are available.</td>
+  </tr>
+  <tr valign="top">
+    <td>timeout</td>
+    <td>Socket read timeout in seconds.</td>
+    <td>300</td>
+  </tr>
+  <tr valign="top">
+    <td><b>Thread Pool Properties</b></td>
+    <td>&nbsp;</td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr valign="top">
+    <td>maxThreads</td>
+    <td>Maximum number of threads in Thread pool.</td>
+    <td>200</td>
+  </tr>
+  <tr valign="top">
+    <td>maxSpareThreads</td>
+    <td>Maximun number of spare threads.  Unused threads will be terminated as
+      needed to keep the number of spare threads under this number.</td>
+    <td>50</td>
+  </tr>
+  <tr valign="top">
+    <td>minSpareThreads</td>
+    <td>Minimum number of spare threads. Additional threads will be created
+      as needed to keep the number of spare threads up to this number.</td>
+    <td>4</td>
+  </tr>
+  <tr valign="top">
+    <td>pools</td>
+    <td>Enables use of a Thread pool.</td>
+    <td>true</td>
+  </tr>
+</table>
+
+<p><b>Note:</b> In Tomcat 3.3.1 and later, you may specify attributes that do
+not appear in the list above. These attribute settings will be saved in a list
+and made available to the secure socket factory when <code>secure</code> is set
+<code>true</code>.  Supported attributes are:</p>
+
+<h4>PureTLS</h4>
+
+<table border="1" cellpadding="2" cellspacing="0">
+  <tr valign="top">
+    <th>Attribute</th>
+    <th>Description</th>
+    <th>Default</th>
+  </tr>
+  <tr>
+    <td>rootfile</td>
+    <td>File containing root certificates.</td>
+    <td>root.pem</td>
+  </tr>
+  <tr>
+    <td>randomfile</td>
+    <td>File to initialize random number generation.</td>
+    <td>random.pem</td>
+  </tr>
+</table>
+
+<h4>JSSE</h4>
+
+<table border="1" cellpadding="2" cellspacing="0">
+  <tr valign="top">
+    <th>Attribute</th>
+    <th>Description</th>
+    <th>Default</th>
+  </tr>
+  <tr>
+    <td>algorithm</td>
+    <td>Algorithm used to encode the certificate.</td>
+    <td>SunX509</td>
+  </tr>
+  <tr>
+    <td>keystoreType</td>
+    <td>Type of keystore.</td>
+    <td>JKS</td>
+  </tr>
+  <tr>
+    <td>keystorePass</td>
+    <td>Password to Keystore file.</td>
+    <td><i>defaults to keypass setting</i></td>
+  </tr>
+  <tr>
+    <td>protocol</td>
+    <td>Protocol for the SSL.</td>
+    <td>TLS</td>
+  </tr>
+</table>
+
+<h4>Example(s)</h4>
+
+<pre>
+&lt;Http10Interceptor port=&quot;8080&quot; timeout=&quot;60&quot; /&gt;
+</pre>
+
+<hr size="5">
+
+<!-- ======================================== -->
+
+<h3><a name="IISConfig">IISConfig</a></h3>
+
+<p><b>Type:</b> Configuration</p>
+
+<h4>Description</h4>
+
+<p>Generate configuration files for isapi_redirect.dll to be used for connecting
+IIS to Tomcat.  In Tomcat 3.3, two files will be generated, <code>iis_redirect.reg</code> and
+<code>uriworkermap.properties</code>. Both files will be written to
+<code>conf/auto</code> relative to TOMCAT_HOME.  The <code>iis_redirect.reg</code>
+contains the needed registry entries for the <code>iis_redirect.dll</code>.
+You may enter the settings into the registry by double-clicking on this file in
+Windows Explorer.  The <code>uriworkermap.properties</code> file will be read
+by the <code>isapi_redirect.dll</code> to get the mappings that determine
+which requests should be passed to Tomcat.</p>
+
+<p>In Tomcat 3.3.1, an additional file is written.  The default is to write
+an <code>isapi_redirect.properties</code> file to the same directory as the
+<code>iis_redirect.reg</code> file. It contains the same configuration
+information as the <code>iis_redirect.reg</code>, and offers an alternative
+method of configuring the redirector instead of relying on the registry.
+See the document mentioned in the next paragraph for details on its use.</p>
+
+<p>For additional information on connecting Tomcat to IIS, see the
+<a href="tomcat-iis-howto.html">Tomcat IIS HowTo</a> document.</p>
+
+<p><b>Important Note:</b> The configuration files are not written as part of a
+normal startup of Tomcat.  To generate the configuration files on demand,
+append:</p>
+<pre>    jkconf</pre>
+<p>or</p>
+<pre>    -jkconf</pre>
+<p>to the startup command.  Tomcat will initialize, write the configuration files,
+and then shutdown. This may be done while Tomcat 3.3 is running. To generate
+the configuration files during normal startup, add:</p>
+<pre>    jkconf=&quot;true&quot;</pre>
+<p>to the <code>&lt;ContextManager ... &gt;</code> element in the
+<code>server.xml</code> file.</p>
+
+<h4>Attributes</h4>
+
+<table border="1" cellpadding="2" cellspacing="0">
+  <tr valign="top">
+    <th>Attribute</th>
+    <th>Description</th>
+    <th>Default</th>
+  </tr>
+  <tr valign="top">
+    <td>configHome</td>
+    <td>Default parent directory for the following paths. Ignored whenever any
+      of the following paths is absolute.</td>
+    <td>TOMCAT_HOME</td>
+  </tr>
+  <tr valign="top">
+    <td>regConfig</td>
+    <td>Path to use for writing the registry settings configuration file.</td>
+    <td>conf/auto/iis_redirect.reg</td>
+  </tr>
+  <tr valign="top">
+    <td>uriConfig</td>
+    <td>Path to use for writing the URI worker map configuration file.</td>
+    <td>conf/auto/uriworkermap.properties</td>
+  </tr>
+  <tr valign="top">
+    <td>workersConfig</td>
+    <td>Path to workers configuration file.</td>
+    <td>conf/jk/workers.properties</td>
+  </tr>
+  <tr valign="top">
+    <td>isapiRedirector&nbsp;&nbsp;<br><b>[Tomcat 3.3.1]</b></td>
+    <td>Name of the ISAPI connector DLL.  This setting controls the name of
+      the redirector DLL used in the configuration settings. This setting
+      appears in the registry settings configuration file specified by the
+      <code>regConfig</code> attribute. It is also written to a file with the
+      same name as the DLL, but with a &quot;.properties&quot; extension.
+      The &quot;properties&quot; file will be written to the same directory
+      as the registry settings configuration file.<br>
+      <br>
+      <b>Note:</b> This &quot;properties&quot; file may be placed in the same
+      directory as the Tomcat redirector plugin DLL being used by IIS.
+      Provided its base name is the same as the DLL (e.g. isapi_redirect.dll and
+      isapi_redirect.properties) the configuration settings in the file will
+      be used instead of settings found in the registry.</td>
+    <td>isapi_redirect.dll</td>
+  </tr>
+  <tr valign="top">
+    <td>jkLog</td>
+    <td>Path to log file to be used by <code>isapi_redirect.dll</code>.</td>
+    <td>logs/iis_redirect.log</td>
+  </tr>
+  <tr valign="top">
+    <td>jkDebug</td>
+    <td>JK Loglevel setting.  May be debug, info, error, or emerg.</td>
+    <td>emerg</td>
+  </tr>
+  <tr valign="top">
+    <td>jkWorker</td>
+    <td>The desired worker. Must be set to one of the workers defined in the
+      workers.properties file. &quot;ajp12&quot;, &quot;ajp13&quot; or
+      &quot;inprocess&quot; are the workers found in the default
+      workers.properties file.</td>
+    <td>Defaults to &quot;ajp13&quot; if an Ajp13Connector is in use, otherwise it
+      defaults to &quot;ajp12&quot;.</td>
+  </tr>
+  <tr valign="top">
+    <td>forwardAll</td>
+    <td>If <code>true</code>, forward all requests to Tomcat. This helps ensure that all the
+      behavior configured in the web.xml file functions correctly.  If <code>false</code>,
+      let IIS serve static resources. Warning: When <code>false</code>, some configuration
+      in the web.xml may not be duplicated in IIS.  Review the configuration
+      files to see the actual configuration being set in IIS.</td>
+    <td>true</td>
+  </tr>
+  <tr valign="top">
+    <td>noRoot</td>
+    <td>If true, the root context is not mapped to Tomcat. If <code>false</code> and
+	  forwardAll is <code>true</code>, all requests to the root context are mapped to Tomcat.
+	  If <code>false</code> and forwardAll is <code>false</code>, only JSP and servlets requests to the
+	  root context are mapped to Tomcat. </td>
+    <td>true</td>
+  </tr>
+</table>
+
+<h4>Example(s)</h4>
+
+<pre>
+&lt;IISConfig forwardAll=&quot;true&quot; noRoot=&quot;false&quot; /&gt;
+</pre>
+
+<hr size="5">
+
+<!-- ======================================== -->
+
+<h3><a name="InvokerInterceptor">InvokerInterceptor</a></h3>
+
+<p><b>Type:</b> Generator</p>
+
+<h4>Description</h4>
+
+<p>Provides support for the &quot;/servlet/<i>class name</i>&quot; legacy
+method of invoking servlets.</p>
+
+<h4>Attributes</h4>
+
+<p>This module has no user settable attributes.</p>
+
+<h4>Example(s)</h4>
+
+<pre>
+&lt;InvokerInterceptor /&gt;
+</pre>
+
+<hr size="5">
+
+<!-- ======================================== -->
+
+<h3><a name="JDBCRealm">JDBCRealm</a></h3>
+
+<p><b>Type:</b> Access, Authentication, and Authorization</p>
+
+<h4>Description</h4>
+
+<p>Authenticates the user if required for a request.  The authentication
+occurs using data from &quot;user&quot; and &quot;user roles&quot; tables
+accessed using a JDBC connection.</p>
+
+<h4>Attributes</h4>
+
+<table border="1" cellpadding="2" cellspacing="0">
+  <tr valign="top">
+    <th>Attribute</th>
+    <th>Description</th>
+    <th>Default</th>
+  </tr>
+  <tr valign="top">
+    <td>driverName</td>
+    <td>JDBC driver to use.</td>
+    <td><i>must be specified</i></td>
+  </tr>
+  <tr valign="top">
+    <td>connectionURL</td>
+    <td>URL to use to connect to the database.</td>
+    <td><i>must be specified</i></td>
+  </tr>
+  <tr valign="top">
+    <td>connectionName</td>
+    <td>User name to use to connect to the database.  The connectionPassword
+      must also be specified before the user name and password will be used.</td>
+    <td><i>not used</i></td>
+  </tr>
+  <tr valign="top">
+    <td>connectionPassword</td>
+    <td>Password to use to connect to the database.  The connectionName must
+      also be specified before the user name and password will be used.</td>
+    <td><i>not used</i></td>
+  </tr>
+  <tr valign="top">
+    <td>userTable</td>
+    <td>Table that holds the user data.</td>
+    <td><i>must be specified</i></td>
+  </tr>
+  <tr valign="top">
+    <td>userNameCol</td>
+    <td>Column in the user table that holds the user's name.</td>
+    <td><i>must be specified</i></td>
+  </tr>
+  <tr valign="top">
+    <td>userCredCol</td>
+    <td>Column in the user table that holds the user's credentials.</td>
+    <td><i>must be specified</i></td>
+  </tr>
+  <tr valign="top">
+    <td>userRoleTable</td>
+    <td>Table that holds the relation of users to their roles</td>
+    <td><i>must be specified</i></td>
+  </tr>
+  <tr valign="top">
+    <td>roleNameCol</td>
+    <td>Column in the user role table that names a role.</td>
+    <td><i>must be specified</i></td>
+  </tr>
+  <tr valign="top">
+    <td>connectOnInit</td>
+    <td>Enables establishing JDBC connection when Tomcat starts.  Otherwise,
+      establish JDBC connection on first use.</td>
+    <td>false</td>
+  </tr>
+</table>
+
+<h4>Example(s)</h4>
+
+<pre>
+&lt;JDBCRealm driverName=&quot;sun.jdbc.odbc.JdbcOdbcDriver&quot; 
+              connectionURL=&quot;jdbc:odbc:TOMCAT&quot; 
+              userTable=&quot;users&quot;
+              userNameCol=&quot;user_name&quot; 
+              userCredCol=&quot;user_pass&quot; 
+              userRoleTable=&quot;user_roles&quot; 
+              roleNameCol=&quot;role_name&quot; /&gt;
+</pre>
+
+<hr size="5">
+
+<!-- ======================================== -->
+
+<h3><a name="Jdk12Interceptor">Jdk12Interceptor</a></h3>
+
+<p><b>Type:</b> Generator</p>
+
+<h4>Description</h4>
+
+<p>Ensures that the proper context classloader is in effect during servlet
+execution.</p>
+
+<h4>Attributes</h4>
+
+<p>This module has no user settable attributes.</p>
+
+<h4>Example(s)</h4>
+
+<pre>
+&lt;Jdk12Interceptor /&gt;
+</pre>
+
+<hr size="5">
+
+<!-- ======================================== -->
+
+<h3><a name="JniConnector">JniConnector</a></h3>
+
+<p><b>Type:</b> Server</p>
+
+<h4>Description</h4>
+
+<p>Handles requests processed by Tomcat running in-process. It has no
+effect if Tomcat was not started in-process by the Tomcat connector.</p>
+
+<h4>Attributes</h4>
+
+<table border="1" cellpadding="2" cellspacing="0">
+  <tr valign="top">
+    <th>Attribute</th>
+    <th>Description</th>
+    <th>Default</th>
+  </tr>
+  <tr valign="top">
+    <td>exitIfNoLib</td>
+    <td>Causes Tomcat to exit if the native libary is not successfully loaded.</td>
+    <td>true</td>
+  </tr>
+  <tr valign="top">
+    <td>nativeLibrary</td>
+    <td>Name of the native library to load.  If the name specified is not
+      absolute, it tries loading the library using the name as is.  If that
+      fails, it will try loading it from <code>TOMCAT_HOME/bin/native</code>.</td>
+    <td>Windows: jni_connect.dll<br>
+      Netware: jni_connect.nlm<br>
+      Unix and all others: jni_connect.so</td>
+  </tr>
+</table>
+
+<h4>Example(s)</h4>
+
+<pre>
+&lt;JniConnector nativeLibrary=&quot;bin/jni_connect.so&quot; /&gt;
+</pre>
+
+<hr size="5">
+
+<!-- ======================================== -->
+
+<h3><a name="JservConfig">JservConfig</a></h3>
+
+<p><b>Type:</b> Configuration</p>
+
+<h4>Description</h4>
+
+<p>Generate configuration file for mod_jserv to be included in Apache's httpd.conf.</p>
+
+<p>For additional information on connecting Tomcat to Apache via mod_jserv, see the
+<a href="tomcat-apache-howto.html">Tomcat Apache HowTo</a> document.</p>
+
+<p><b>Important Note:</b> The most stable and robust connector for connecting
+Tomcat 3.3 to Apache is mod_jk.  Its use is recommended over mod_jserv.
+Also, unlike the <code><a href="#ApacheConfig">ApacheConfig</a></code>,
+<code><a href="#IISConfig">IISConfig</a></code>, and
+<code><a href="#NSConfig">NSConfig</a></code> modules, <code>JservConfig</code>
+does not participate in the &quot;jkcont&quot; startup option.  Instead, the
+configuration file is written each time Tomcat is started.</p>
+
+<h4>Attributes</h4>
+
+<table border="1" cellpadding="2" cellspacing="0">
+  <tr valign="top">
+    <th>Attribute</th>
+    <th>Description</th>
+    <th>Default</th>
+  </tr>
+  <tr valign="top">
+    <td>configHome</td>
+    <td>Default parent directory for the following paths. Ignored whenever any
+      of the following paths is absolute.</td>
+    <td>TOMCAT_HOME</td>
+  </tr>
+  <tr valign="top">
+    <td>jservConfig</td>
+    <td>Path to use for writing Apache tomcat-apache.conf configuration file.</td>
+    <td>conf/auto/tomcat-apache.conf</td>
+  </tr>
+  <tr valign="top">
+    <td>modJserv</td>
+    <td>Path to Apache mod_jserv plugin file.</td>
+    <td>Windows: modules/ApacheModuleJserv.dll<br>
+      Unix and all others: libexec/mod_jserv.so</td>
+  </tr>
+  <tr valign="top">
+    <td>jservLog</td>
+    <td>Path to log file to be used by mod_jserv.</td>
+    <td>logs/mod_jserv.log</td>
+  </tr>
+  <tr valign="top">
+    <td>jservDebug</td>
+    <td>JServ Loglevel setting.  May be debug, info, notice, warn, error, crit,
+       alert, or emerg.</td>
+    <td>emerg</td>
+  </tr>
+  <tr valign="top">
+    <td>forwardAll</td>
+    <td>If <code>true</code>, forward all requests to Tomcat. This helps ensure that all the
+      behavior configured in the web.xml file functions correctly.  If <code>false</code>,
+      let Apache serve static resources. Warning: When <code>false</code>, some configuration
+      in the web.xml may not be duplicated in Apache.  Review the tomcat-apache.conf
+      configuration file to see the actual configuration being set in Apache.</td>
+    <td>true</td>
+  </tr>
+  <tr valign="top">
+    <td>noRoot</td>
+    <td>If <code>true</code>, the root context is not mapped to Tomcat. If <code>false</code> and
+	  forwardAll is <code>true</code>, all requests to the root context are mapped to Tomcat.
+	  If <code>false</code> and forwardAll is <code>false</code>, only JSP and servlets requests to the
+	  root context are mapped to Tomcat. If a root context is assigned to a virtual host,
+	  then the DocumentRoot is automatically included in the configuration for
+	  that virtual host.</td>
+    <td>true</td>
+  </tr>
+</table>
+
+<h4>Example(s)</h4>
+
+<pre>
+&lt;JservConfig forwardAll=&quot;true&quot; noRoot=&quot;false&quot; /&gt;
+</pre>
+
+<hr size="5">
+
+<!-- ======================================== -->
+
+<h3><a name="JspInterceptor">JspInterceptor</a></h3>
+
+<p><b>Type:</b> Servlet 2.2 Facade</p>
+
+<h4>Description</h4>
+
+<p>Handles turning a JSP page into a loaded servlet for execution. Execution
+for the loaded servlet is handled the same as any other servlet. It uses Jasper
+for translating the JSP to a Java file, then performs compilation to a class
+file directly rather than using Jasper for the class compilation.</p>
+
+<p>There is support for using Sun's <code>javac</code> Java compiler as well
+as IBM's <code>Jikes</code> Java compiler.</p>
+
+<h4>Attributes</h4>
+
+<table border="1" cellpadding="2" cellspacing="0">
+  <tr valign="top">
+    <th>Attribute</th>
+    <th>Description</th>
+    <th>Default</th>
+  </tr>
+  <tr valign="top">
+    <td>&nbsp;</td>
+    <td><b>JSP Translation Options</b></td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr valign="top">
+    <td>keepGenerated</td>
+    <td>Keep the translated Java file. If <code>false</code>, the Java file
+      is deleted after being compiled to a class file.</td>
+    <td>true</td>
+  </tr>
+  <tr valign="top">
+    <td>largeFile</td>
+    <td>Writes the HTML text from a JSP to a separate file with a &quot;.dat&quot;
+      extension. This text is read when the JSP servlet initializes.  The makes
+      the class file smaller. If <code>false</code>, &quot;out.print()&quot;
+      statements are generated with the HTML text is embedded as a literal.</td>
+    <td>false</td>
+  </tr>
+  <tr valign="top">
+    <td>mappedFile</td>
+    <td>Generate &quot;out.print()&quot; for each HTML text line in the JSP
+      file.  If <code>false</code>, the HTML text from multiple lines are
+      concatenated and output in one &quot;out.print()&quot;. This option is
+      ignored if <code>largeFile</code> is <code>true</code>.</td>
+    <td>false</td>
+  </tr>
+  <tr valign="top">
+    <td>IEClassId</td>
+    <td>The Microsoft Internet Explorer &quot;classid&quot; to be used by
+      the <code>jsp:plugin</code> tag.</td>
+    <td>clsid:8AD9C840-044E-11D1-B3E9-00805F499D93</td>
+  </tr>
+  <tr valign="top">
+    <td>scratchdir</td>
+    <td>Destination directory for the JSP's Java file.</td>
+    <td><i>context's work directory</i></td>
+  </tr>
+  <tr valign="top">
+    <td>&nbsp;</td>
+    <td><b>Options for JSP Java Compilation</b></td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr valign="top">
+    <td>classDebugInfo</td>
+    <td>Enables compiling the class file with debugging information.</td>
+    <td>false</td>
+  </tr>
+  <tr valign="top">
+    <td>javaCompiler</td>
+    <td>Jasper class for invoking the Java compiler.  For using Sun's
+    <code>javac</code> Java compiler in process, specify
+    <code>org.apache.jasper.compiler.SunJavaCompiler</code>. To use IBM's
+    Jikes Java compiler out of process, specify 
+    <code>org.apache.jasper.compiler.JikesJavaCompiler</code> or
+    just <code>jikes</code> which is a supported shortcut.</td>
+    <td>org.apache.jasper.compiler.SunJavaCompiler</td>
+  </tr>
+  <tr valign="top">
+    <td>useWebAppCL</td>
+    <td>If true, Java compilation with &quot;sun.tools.javac.Main&quot; will
+        be performed using the web application classloader instead of using
+        the &quot;container&quot; classloader. This was added as a workaround
+        for problems encountered on some HP-UX systems.</td>
+    <td>false</td>
+  </tr>
+  <tr valign="top">
+    <td>&nbsp;</td>
+    <td><b>Options for Jikes Complier</b></td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr valign="top">
+    <td>jspCompilerPath</td>
+    <td>Path to Java compiler executable. Used only with Jikes as the Java
+      compiler. If not specified, the Jikes executable must be in the <code>PATH</code>
+      environment variable.</td>
+    <td><i>empty</i></td>
+  </tr>
+  <tr valign="top">
+    <td>jikesClasspath</td>
+    <td>Extra classpath entries to pass to the Jikes compiler. This would
+      typically include extension jars found in the <code>jre/lib/ext</code>
+      directory of a Java 2 SDK. By default, the <code>jre/lib/rt.jar</code>
+      file is automatically included so it does not need to be present
+      in this setting.  Classes from <code>WEB-INF/classes</code> and
+      jars from <code>WEB-INF/lib</code> are also automatically included.</td>
+    <td><i>empty</i></td>
+  </tr>
+  <tr valign="top">
+    <td>&nbsp;</td>
+    <td><b>Options for JSP Runtime</b></td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr valign="top">
+    <td>pageContextPoolSize</td>
+    <td>Sets pool size of JSP PageContexts. If zero, disables pooling.</td>
+    <td>100</td>
+  </tr>
+  <tr valign="top">
+    <td></td>
+    <td><b>Options for Jasper JSP servlet</b> - The attributes other than
+      <code>useJspServlet</code> are ignored if <code>useJspServlet</code>
+      is <code>false</code>.</td>
+    <td></td>
+  </tr>
+  <tr valign="top">
+    <td>useJspServlet</td>
+    <td>Enables use of Jaspers JspServlet for translating, compiling, and
+      loading JSP pages. Provided for backward compatibility with earlier
+      Tomcat implementations.</td>
+    <td>false</td>
+  </tr>
+  <tr valign="top">
+    <td>jspServlet</td>
+    <td>The JSP servlet class.</td>
+    <td>org.apache.jasper.servlet.JspServlet</td>
+  </tr>
+  <tr valign="top">
+    <td>classPath</td>
+    <td>Classpath passed to the Java compiler when compiling to a class file.</td>
+    <td><i>empty</i></td>
+  </tr>
+</table>
+
+<h4>Example(s)</h4>
+
+<pre>
+&lt;JspInterceptor keepGenerated=&quot;false&quot /&gt;
+&lt;JspInterceptor javaCompiler=&quot;jikes&quot; /&gt;
+</pre>
+
+<hr size="5">
+
+<!-- ======================================== -->
+
+<h3><a name="LoaderInterceptor11">LoaderInterceptor11</a></h3>
+
+<p><b>Type:</b> Configuration</p>
+
+<h4>Description</h4>
+
+<p>This module constructs and sets the classloader for each context. It
+supports the Servlet 2.2 spec by including <code>WEB-INF/classes</code>
+and the Jars in <code>WEB-INF/lib</code> in the classloader.  The
+available attributes allow control over the context classloader's parent.
+With the default attributes, &quot;trusted&quot; contexts get the
+<a href="tomcat-ug.html#configuring_classes">Server Classloader</a> as their
+parent and &quot;untrusted&quot; contexts get the
+<a href="tomcat-ug.html#configuring_classes">Apps Classloader</a> as their
+parent.</p>
+
+<h4>Attributes</h4>
+
+<table border="1" cellpadding="2" cellspacing="0">
+  <tr valign="top">
+    <th>Attribute</th>
+    <th>Description</th>
+    <th>Default</th>
+  </tr>
+  <tr valign="top">
+    <td>additionalJars<br><b>[Tomcat 3.3.1]</b></td>
+    <td>List of jars to be added to each web application separated by the
+      specified <code>jarSeparator</code>.  If not an absolute path, the path
+      is assumed to be relative to <code>TOMCAT_HOME/lib/container</code>.</td>
+    <td><i>none</i></td>
+  </tr>
+  <tr valign="top">
+    <td>jarSeparator<br><b>[Tomcat 3.3.1]</b></td>
+    <td>String containing the character to be used as a jar separator.  This
+      separator is used by the <code>additionalJars</code> and
+      <code>jaxpJars</code> lists.</td>
+    <td>:</td>
+  </tr>
+  <tr valign="top">
+    <td>jaxp</td>
+    <td>Enables providing a default XML parser to web applications that don't
+      already have one.  If the <code>javax.xml.parsers.SAXParserFactory</code>
+      class is found in a web application, it is assumed to already contain
+      an XML parser and no action is taken for that web application.</td>
+    <td>true</td>
+  </tr>
+  <tr valign="top">
+    <td>jaxpDir</td>
+    <td>Directory where Jaxp jars are located.</td>
+    <td>lib/container</td>
+  </tr>
+  <tr valign="top">
+    <td>jaxpJars</td>
+    <td>List of jars to be added. The list is separated by colons in Tomcat 3.3,
+      or by <code>jarSeparator</code> in Tomcat 3.3.1 and later.</td>
+    <td>jaxp.jar:crimson.jar:xalan.jar:xerces.jar</td>
+  </tr>
+  <tr valign="top">
+    <td>useNoParent</td>
+    <td>If <code>true</code>, sets the context classloader's parent to
+      <code>null</code>. If <code>false</code>, then contexts which are
+      &quot;trusted&quot; will get the <a href="tomcat-ug.html#configuring_classes">
+      Server Classloader</a> as the parent. The parent classloader for contexts
+      which are not &quot;trusted&quot; are controlled by the
+      <code>useApplicationLoader</code> attribute.</td>
+    <td>false</td>
+  </tr>
+  <tr valign="top">
+    <td>useApplicationLoader</td>
+    <td>If <code>true</code>, when <code>useNoParent</code> is <code>false</code>,
+      sets the context classloader's parent to the
+      <a href="tomcat-ug.html#configuring_classes">Apps Classloader</a>. If
+      <code>false</code>, when <code>useNoParent</code> is <code>false</code>,
+      sets the context classloader's parent to the
+      <a href="tomcat-ug.html#configuring_classes">Server Classloader</a>.</td>
+    <td>true</td>
+  </tr>
+  <tr valign="top">
+    <td>use11Loader<br><b>[Tomcat 3.3.1]</b></td>
+    <td>If <code>true</code>, use the SimpleClassLoader (normally used in 
+        JDK 1.1.8 environments) even under Java2.  Otherwise the default
+        URLClassLoader is used when running with Java2.<br>
+        The primary reason for this attribute is as a workaround for known
+        jar reloading problems in the URLClassLoader of some JVM's.  If you
+        have problems with reloading web applications after updating jars,
+        try setting this attribute true. This provides compatiblity with
+        Tomcat 3.2.x. with respect to jar reloading.</td>
+    <td>false</td>
+  </tr>
+</table>
+
+<h4>Example(s)</h4>
+
+<pre>
+&lt;LoaderInterceptor11 jaxp=&quot;true&quot; /&gt;
+&lt;LoaderInterceptor11 jaxp=&quot;true&quot; use11Loader=&quot;true&quot;/&gt;
+</pre>
+
+<h4>Additional Note</h4>
+
+<p>For Tomcat 3.3.1 and later, LoaderInterceptor11 also supports an
+<code>additionalJars</code> Context property that works the same as the module's
+<code>additionalJars</code> attribute for that context only. If
+<code>additionalJars</code> is specified as a Context property and as
+a LoaderInterceptor11 attribute, both lists are added. For information
+on setting Context properties, see
+<a href="tomcat-ug.html#context_addcust">Adding and Customizing Contexts</a>
+in the <a href="tomcat-ug.html">Tomcat 3.3 User's Guide</a>.</p>
+
+<hr size="5">
+
+<!-- ======================================== -->
+
+<h3><a name="LoadOnStartupInterceptor">LoadOnStartupInterceptor</a></h3>
+
+<p><b>Type:</b> Servlet 2.2 Facade</p>
+
+<h4>Description</h4>
+
+<p>Handles pre-loading of servlets specified as &lt;load-on-startup&gt; in a
+Context's web.xml file. </p>
+
+<h4>Attributes</h4>
+
+<p>This module has no user settable attributes.</p>
+
+<h4>Example(s)</h4>
+
+<pre>
+&lt;LoadOnStartupInterceptor /&gt;
+</pre>
+
+<hr size="5">
+
+<!-- ======================================== -->
+
+<h3><a name="LogEvents">LogEvents</a></h3>
+
+<p><b>Type:</b> Configuration</p>
+
+<h4>Description</h4>
+
+<p>This module enables logging of when module methods are called.  The log
+output goes to the ContextManager's log channel. Event logging is
+automatically enabled if the ContextManager's debug level is set greater
+than 5.</p>
+
+<h4>Attributes</h4>
+
+<table border="1" cellpadding="2" cellspacing="0">
+  <tr valign="top">
+    <th>Attribute</th>
+    <th>Description</th>
+    <th>Default</th>
+  </tr>
+  <tr valign="top">
+    <td>enabled</td>
+    <td>If <code>true</code>, enables logging of when module methods are called.</td>
+    <td>false</td>
+  </tr>
+</table>
+
+<h4>Example(s)</h4>
+
+<pre>
+&lt;LogEvents enabled=&quot;true&quot; /&gt;
+</pre>
+
+<hr size="5">
+
+<!-- ======================================== -->
+
+<h3><a name="LogSetter">LogSetter</a></h3>
+
+<p><b>Type:</b> Configuration</p>
+
+<h4>Description</h4>
+
+<p>Configures a log channel.</p>
+
+<h4>Attributes</h4>
+
+<table border="1" cellpadding="2" cellspacing="0">
+  <tr valign="top">
+    <th>Attribute</th>
+    <th>Description</th>
+    <th>Default</th>
+  </tr>
+  <tr valign="top">
+    <td>name</td>
+    <td>Name of the log channel.</td>
+    <td>null</td>
+  </tr>
+  <tr valign="top">
+    <td>path</td>
+    <td>Path to the desired log file. You may embed a
+      <code>java.text.SimpleDateFormat</code> string enclosed within '{}'
+      to create a path that encorporates the current date and or time.</td>
+    <td>null, log output goes to stderr</td>
+  </tr>
+  <tr valign="top">
+    <td>verbosityLevel</td>
+    <td>Verbosity level for the log.  Accepted values are: <code>FATAL</code>,
+      <code>ERROR</code>, <code>WARNING</code>, <code>INFORMATION</code>,
+      and <code>DEBUG</code>.</td>
+    <td>INFORMATION</td>
+  </tr>
+  <tr valign="top">
+    <td>timestamps</td>
+    <td>If <code>true</code>, a timestamp is included at the beginning of
+      each line in the log output.</td>
+    <td>true</td>
+  </tr>
+  <tr valign="top">
+    <td>timestampFormat</td>
+    <td>Format for timestamp, if enabled.</td>
+    <td>yyyy-MM-dd HH:mm:ss</td>
+  </tr>
+</table>
+
+<h4>Example(s)</h4>
+
+<pre>
+&lt;LogSetter name=&quot;tc_log&quot; verbosityLevel=&quot;DEBUG&quot; /&gt;
+</pre>
+
+<hr size="5">
+
+<!-- ======================================== -->
+
+<h3><a name="NSConfig">NSConfig</a></h3>
+
+<p><b>Type:</b> Configuration</p>
+
+<h4>Description</h4>
+
+<p>Generate configuration files for nsapi_redirect.dll to be used for connecting
+Netscape Web Server to Tomcat.  An <code>obj.conf</code> will be written to
+<code>conf/auto</code> relative to TOMCAT_HOME.  The contents of this
+<code>obj.conf</code> will need to be merged with the <code>obj.conf</code>
+file being used for the disired server.</p>
+
+<p>For additional information on connecting Tomcat to Netscape, see the
+<a href="tomcat-netscape-howto.html">Tomcat Netscape HowTo</a> document.</p>
+
+<p><b>Important Note:</b> The configuration files are not written as part of a
+normal startup of Tomcat.  To generate the configuration files on demand,
+append:</p>
+<pre>    jkconf</pre>
+<p>or</p>
+<pre>    -jkconf</pre>
+<p>to the startup command.  Tomcat will initialize, write the configuration files,
+and then shutdown. This may be done while Tomcat 3.3 is running. To generate
+the configuration files during normal startup, add:</p>
+<pre>    jkconf=&quot;true&quot;</pre>
+<p>to the <code>&lt;ContextManager ... &gt;</code> element in the
+<code>server.xml</code> file.</p>
+
+<h4>Attributes</h4>
+
+<table border="1" cellpadding="2" cellspacing="0">
+  <tr valign="top">
+    <th>Attribute</th>
+    <th>Description</th>
+    <th>Default</th>
+  </tr>
+  <tr valign="top">
+    <td>configHome</td>
+    <td>Default parent directory for the following paths. Ignored whenever any
+      of the following paths is absolute.</td>
+    <td>TOMCAT_HOME</td>
+  </tr>
+  <tr valign="top">
+    <td>nsapiJk</td>
+    <td>Path to Netscape mod_jk plugin file.</td>
+    <td>Windows: bin/nsapi_redirect.dll<br>
+      Netware: bin/nsapi_rd.nlm<br>
+      Unix and all others: bin/nsapi_redirector.so</td>
+  </tr>
+  <tr valign="top">
+    <td>objConfig</td>
+    <td>Path to use for writing the Netscape obj.conf configuration file.</td>
+    <td>conf/auto/obj.conf</td>
+  </tr>
+  <tr valign="top">
+    <td>objectName</td>
+    <td>Name of the Object to execute the requests.</td>
+    <td>servlet</td>
+  </tr>
+  <tr valign="top">
+    <td>workersConfig</td>
+    <td>Path to workers configuration file.</td>
+    <td>conf/jk/workers.properties</td>
+  </tr>
+  <tr valign="top">
+    <td>jkLog</td>
+    <td>Path to log file to be used by <code>nsapi_redirect.dll</code>.</td>
+    <td>logs/nsapi_redirect.log</td>
+  </tr>
+  <tr valign="top">
+    <td>jkDebug</td>
+    <td>JK Loglevel setting.  May be debug, info, error, or emerg.</td>
+    <td>emerg</td>
+  </tr>
+  <tr valign="top">
+    <td>jkWorker</td>
+    <td>The desired worker. Must be set to one of the workers defined in the
+      workers.properties file. &quot;ajp12&quot;, &quot;ajp13&quot; or
+      &quot;inprocess&quot; are the workers found in the default
+      workers.properties file.</td>
+    <td>Defaults to &quot;ajp13&quot; if an Ajp13Connector is in use, otherwise it
+      defaults to &quot;ajp12&quot;.</td>
+  </tr>
+  <tr valign="top">
+    <td>forwardAll</td>
+    <td>If <code>true</code>, forward all requests to Tomcat. This helps ensure that all the
+      behavior configured in the web.xml file functions correctly.  If <code>false</code>,
+      let Netscape serve static resources. Warning: When <code>false</code>, some configuration
+      in the web.xml may not be duplicated in Netscape.  Review the configuration
+      files to see the actual configuration being set in Nescape.</td>
+    <td>true</td>
+  </tr>
+  <tr valign="top">
+    <td>noRoot</td>
+    <td>If true, the root context is not mapped to Tomcat. If <code>false</code> and
+	  forwardAll is <code>true</code>, all requests to the root context are mapped to Tomcat.
+	  If <code>false</code> and forwardAll is <code>false</code>, only JSP and servlets requests to the
+	  root context are mapped to Tomcat. </td>
+    <td>true</td>
+  </tr>
+</table>
+
+<h4>Example(s)</h4>
+
+<pre>
+&lt;NSConfig forwardAll=&quot;true&quot; noRoot=&quot;false&quot; objectName=&quot;tomcat&quot; /&gt;
+</pre>
+
+<hr size="5">
+
+<!-- ======================================== -->
+
+<h3><a name="PolicyLoader">PolicyLoader</a></h3>
+
+<p><b>Type:</b> Configuration</p>
+
+<h4>Description</h4>
+
+<p>Installs a security manager and/or a policy file if Tomcat is started
+with &quot;sandbox&quot; enabled. This module has no effect if you
+specify a &quot;-Djava.security.policy=...&quot; in the startup command
+for the Java VM. Setting the policy on the command line is the
+preferred method.</p>
+
+<h4>Attributes</h4>
+
+<table border="1" cellpadding="2" cellspacing="0">
+  <tr valign="top">
+    <th>Attribute</th>
+    <th>Description</th>
+    <th>Default</th>
+  </tr>
+  <tr valign="top">
+    <td>securityManagerClass</td>
+    <td>Customize the security manager</td>
+    <td><p>java.lang.SecurityManager</p>
+    </td>
+  </tr>
+  <tr valign="top">
+    <td>policyFile</td>
+    <td>Policy file to be used by the security manager.</td>
+    <td>conf/tomcat.policy</td>
+  </tr>
+  <tr valign="top">
+    <td>sandbox</td>
+    <td>Force the use of a sandbox, regardless of command line.</td>
+    <td>false
+    </td>
+  </tr>
+</table>
+
+<h4>Example(s)</h4>
+
+<pre>
+&lt;PolicyLoader securityManagerClass=&quot;java.lang.SecurityManager&quot;
+    policyFile=&quot;conf/tomcat.policy&quot; /&gt;
+</pre>
+
+<hr size="5">
+
+<!-- ======================================== -->
+
+<h3><a name="ReloadInterceptor">ReloadInterceptor</a></h3>
+
+<p><b>Type:</b> Mappers</p>
+
+<h4>Description</h4>
+
+<p>Handles reloading of servlets and contexts.</p>
+
+<h4>Attributes</h4>
+
+<table border="1" cellpadding="2" cellspacing="0">
+  <tr valign="top">
+    <th>Attribute</th>
+    <th>Description</th>
+    <th>Default</th>
+  </tr>
+  <tr valign="top">
+    <td>fullReload</td>
+    <td>Enables restarting of the context whenever a change is detected. This is
+      the cleanest form of reload.  If <code>false</code>, it only reloads the
+      servlets.</td>
+    <td>true</td>
+  </tr>
+</table>
+
+<h4>Example(s)</h4>
+
+<pre>
+&lt;ReloadInterceptor fullReload=&quot;true&quot; /&gt;
+</pre>
+
+<hr size="5">
+
+<!-- ======================================== -->
+
+<h3><a name="Servlet22Interceptor">Servlet22Interceptor</a></h3>
+
+<p><b>Type:</b> Servlet 2.2 Facade</p>
+
+<h4>Description</h4>
+
+<p>Handles some miscellaneous tasks that help implement behavior related to the
+Servlet 2.2 specification.</p>
+
+<h4>Attributes</h4>
+
+<p>This module has no user settable attributes.</p>
+
+<h4>Example(s)</h4>
+
+<pre>
+&lt;Servlet22Interceptor /&gt;
+</pre>
+
+<hr size="5">
+
+<!-- ======================================== -->
+
+<h3><a name="SessionExpirer">SessionExpirer</a></h3>
+
+<p><b>Type:</b> Session</p>
+
+<h4>Description</h4>
+
+<p>Handles actual descruction of expired sessions.</p>
+
+<h4>Attributes</h4>
+
+<table border="1" cellpadding="2" cellspacing="0">
+  <tr valign="top">
+    <th>Attribute</th>
+    <th>Description</th>
+    <th>Default</th>
+  </tr>
+  <tr valign="top">
+    <td>checkInterval</td>
+    <td>How often to check for expired sessions, in seconds.</td>
+    <td>60</td>
+  </tr>
+</table>
+
+<h4>Example(s)</h4>
+
+<pre>
+&lt;SessionExpirer checkInterval=&quot;120&quot; /&gt;
+</pre>
+
+<hr size="5">
+
+<!-- ======================================== -->
+
+<h3><a name="SessionId">SessionId</a></h3>
+
+<p><b>Type:</b> Session</p>
+
+<h4>Description</h4>
+
+<p>Handles associating sessions with requests and responses.</p>
+
+<h4>Attributes</h4>
+
+<table border="1" cellpadding="2" cellspacing="0">
+  <tr valign="top">
+    <th>Attribute</th>
+    <th>Description</th>
+    <th>Default</th>
+  </tr>
+  <tr valign="top">
+    <td>cookiesFirst</td>
+    <td>Enables checking cookies first for determining if a request has an
+      associated session, followed by checking for &quot;;jsessionid&quot; in
+      the URL.  If <code>false</code>, &quot;;jsessionid&quot; is checked for first.</td>
+    <td>true</td>
+  </tr>
+  <tr valign="top">
+    <td>noCookies</td>
+    <td>If true, no session cookies are added to the response.  Instead you
+      must use HttpServletResponse.encodeURL() to embed  URL's in the response
+      that contain the session id.  If <code>false</code>, the session id will be added
+      to the response as a cookie.  You may still use HttpServletResponse.encodeURL()
+      if you want your sessions to work with browsers that have cookies turned
+      off.</td>
+    <td>false</td>
+  </tr>
+  <tr valign="top">
+    <td>checkSSLSessionId<br><b>[Tomcat 3.3.1]</b></td>
+    <td>If true, Tomcat session will be verified against SSL session to prevent
+      (malicious) use of other users' sessions. In order for this to work, SSL
+      has to be enabled (through Apache) and SSL Session ID has to be known to
+      Tomcat. More information can be found in mod_jk documentation.</td>
+    <td>false</td>
+  </tr>
+
+</table>
+
+<h4>Example(s)</h4>
+
+<pre>
+&lt;SessionId cookiesFirst=&quot;true&quot; noCookies=&quot;false&quot; /&gt;
+&lt;SessionId noCookies=&quot;true&quot; /&gt;
+&lt;SessionId noCookies=&quot;true&quot; checkSSLSessionId=&quot;true&quot;/&gt;
+</pre>
+
+<hr size="5">
+
+<!-- ======================================== -->
+
+<h3><a name="SessionIdGenerator">SessionIdGenerator</a></h3>
+
+<p><b>Type:</b> Session</p>
+
+<h4>Description</h4>
+
+<p>Creates new session IDs when needed for a request.  If the
+<code>randomFile</code> is not available, the class specified by
+<code>randomClass</code> will be used.  In this case, initialization of
+class occurs on the first request requiring a session.</p>
+
+<p><b>Note:</b> The initialization for the <code>java.security.SecureRandom</code>
+class can take a relatively long time.  For development purposes, you may speed
+this up by specifying <code>java.util.Random</code> as the
+<code>randomClass</code> setting.  This should be done only for development
+since the random sequence generated by java.util.Random is predictable.</p>
+
+<h4>Attributes</h4>
+
+<table border="1" cellpadding="2" cellspacing="0">
+  <tr valign="top">
+    <th>Attribute</th>
+    <th>Description</th>
+    <th>Default</th>
+  </tr>
+  <tr valign="top">
+    <td>randomClass</td>
+    <td>Class for creating a random number use in session ID creation when
+      <code>randomFile</code> isn't available.</td>
+    <td>java.security.SecureRandom</td>
+  </tr>
+  <tr valign="top">
+    <td>randomFile</td>
+    <td>A special &quot;device&quot; available on some Unix based operating
+      systems. Used for obtaining a random number used in session ID creation.
+      If available, overrides use of the <code>randomClass</code> setting.</td>
+    <td>/dev/urandom</td>
+  </tr>
+</table>
+
+<h4>Example(s)</h4>
+
+<pre>
+&lt;SessionIdGenerator randomClass=&quot;java.security.SecureRandom&quot;
+    randomFile=&quot;/dev/urandom&quot; /&gt;
+</pre>
+
+<hr size="5">
+
+<!-- ======================================== -->
+
+<h3><a name="SimpleMapper1">SimpleMapper1</a></h3>
+
+<p><b>Type:</b> Mapper</p>
+
+<h4>Description</h4>
+
+<p>Handles the mapping of requests to the appropriate context.</p>
+
+<h4>Attributes</h4>
+
+<table border="1" cellpadding="2" cellspacing="0">
+  <tr valign="top">
+    <th>Attribute</th>
+    <th>Description</th>
+    <th>Default</th>
+  </tr>
+  <tr valign="top">
+    <td>mapCache</td>
+    <td>Enables creating a cache map of the full request URI to its
+      associated context. This speeds the mapping operation for subsequent
+      requests.  This feature is considered experimental. </td>
+    <td>false</td>
+  </tr>
+  <tr valign="top">
+    <td>ignoreCase</td>
+    <td>Enables case insensitive operation when mapping a request to a
+      context.</td>
+    <td>false on Unix based systems<br>
+      true on Windows based systems</td>
+  </tr>
+</table>
+
+<h4>Example(s)</h4>
+
+<pre>
+&lt;SimpleMapper1 /&gt;
+</pre>
+
+<hr size="5">
+
+<!-- ======================================== -->
+
+<h3><a name="SimpleRealm">SimpleRealm</a></h3>
+
+<p><b>Type:</b> Access, Authentication, and Authorization</p>
+
+<h4>Description</h4>
+
+<p>Authenticates the user if required for a request. It compares the user
+name and password information provided by the <a href="#CredentialsInterceptor">
+CredentialsInterceptor</a> against data in memory obtained from an XML file.</p>
+
+<p>Since passwords are stored in text form, you should not use this module
+when security is important.  Replace this module with a more secure one, such
+as the <a href="#JDBCRealm">JDBCRealm</a>.</p>
+
+<p>This module must follow the
+<a href="#CredentialsInterceptor">CredentialsInterceptor</a>.</p>
+
+<h4>Attributes</h4>
+
+<table border="1" cellpadding="2" cellspacing="0">
+  <tr valign="top">
+    <th>Attribute</th>
+    <th>Description</th>
+    <th>Default</th>
+  </tr>
+  <tr valign="top">
+    <td>filename</td>
+    <td>File containing the user names, passwords, and roles.  A leading '/'
+      is optional.</td>
+    <td>/conf/users/tomcat-users.xml</td>
+  </tr>
+</table>
+
+<h4>Example(s)</h4>
+
+<pre>
+&lt;SimpleRealm filename=&quot;conf/users/users.xml&quot; /&gt;
+</pre>
+
+<p>XML file format:</p>
+<pre>
+&lt;tomcat-users&gt;
+  &lt;user name=&quot;<i>user name</i>&quot; password=&quot;<i>password</i>&quot; roles=&quot;<i>role</i>[,<i>role</i>]&quot; /&gt;
+&lt;/tomcat-users&gt;
+</pre>
+
+<hr size="5">
+
+<!-- ======================================== -->
+
+<h3><a name="SimpleSessionStore">SimpleSessionStore</a></h3>
+
+<p><b>Type:</b> Session</p>
+
+<h4>Description</h4>
+
+<p>Creates, stores, and maintains session objects in a simple in-memory pool.</p>
+
+<p><b>Note:</b> This module must follow the <a href="#SessionId">SessionId</a>
+module.</p>
+
+<h4>Attributes</h4>
+
+<table border="1" cellpadding="2" cellspacing="0">
+  <tr valign="top">
+    <th>Attribute</th>
+    <th>Description</th>
+    <th>Default</th>
+  </tr>
+  <tr valign="top">
+    <td>maxActiveSessions</td>
+    <td>Maximum number of active sessions allowed. Attempts to create sessions
+      beyond this limit will fail. If set to &quot;-1&quot;, then there is no limit to
+      the number of active sessions.</td>
+    <td>-1</td>
+  </tr>
+</table>
+
+<h4>Example(s)</h4>
+
+<pre>
+&lt;SimpleSessionStore maxActiveSessions=&quot;-1&quot; /&gt;
+</pre>
+
+<hr size="5">
+
+<!-- ======================================== -->
+
+<h3><a name="StaticInterceptor">StaticInterceptor</a></h3>
+
+<p><b>Type:</b> Generator</p>
+
+<h4>Description</h4>
+
+<p>Generates the response for requests that map to static files or 
+directories.  The display of directory listings may be disabled.</p>
+
+<p>In Tomcat 3.3.1, some additional attributes were added to allow control
+of locale and character encoding of directory listings.</p>
+
+<h4>Attributes</h4>
+
+<table border="1" cellpadding="2" cellspacing="0">
+  <tr valign="top">
+    <th>Attribute</th>
+    <th>Description</th>
+    <th>Default</th>
+  </tr>
+  <tr valign="top">
+    <td>listings</td>
+    <td>Enables the display of directory listings when requested.</td>
+    <td>true</td>
+  </tr>
+  <tr valign="top">
+    <td>useAcceptLanguage<br><b>[Tomcat 3.3.1]</b></td>
+    <td>Enables the use of an Accept-Language header in the request to determine
+        the locale. If <code>false</code>, then the system default locale (i.e.
+        Locale.getDefault()) is used.</td>
+    <td>true</td>
+  </tr>
+  <tr valign="top">
+    <td>useCharset<br><b>[Tomcat 3.3.1]</b></td>
+    <td>Specifies the desired character set to use for encoding the directory
+        listings. If unset, the default ISO-8859-1 is used.  If set to
+        &quot;locale&quot;, then the locale established by the
+        <code>useAcceptLanguage</code> attribute is used.</td>
+    <td><i>not specified</i></td>
+  </tr>
+</table>
+
+<h4>Example(s)</h4>
+
+<pre>
+&lt;StaticInterceptor listing=&quot;false&quot; /&gt;
+&lt;StaticInterceptor listing=&quot;true&quot;
+        useAcceptLanguag=&quot;true&quot; useCharset=&quot;locale&quot;/&gt;
+&lt;StaticInterceptor listing=&quot;true&quot;
+        useAcceptLanguag=&quot;true&quot; useCharset=&quot;UTF-8&quot;/&gt;
+&lt;StaticInterceptor listing=&quot;true&quot;
+        useAcceptLanguag=&quot;false&quot; useCharset=&quot;locale&quot;/&gt;
+</pre>
+
+<hr size="5">
+
+<!-- ======================================== -->
+
+<h3><a name="TagPoolManagerInterceptor">TagPoolManagerInterceptor</a></h3>
+
+<p><b>Type:</b> Servlet 2.2 Facade</p>
+
+<h4>Description</h4>
+
+<p>Handles an enhancement to tag libary support by managing a pool tag objects.
+Tag objects will be created the first time a JSP page runs.  After use the
+tag objects are placed in a pool.  The next time the JSP page runs, the tag
+objects are retrieved from the pool rather than recreated.</p>
+
+<p>If this module is not present, tag objects can't be retrieved from the pool
+and tag objects are created for each use.</p>
+
+<h4>Attributes</h4>
+
+<p>This module has no user settable attributes.</p>
+
+<h4>Example(s)</h4>
+
+<pre>
+&tl;TagPoolManagerInterceptor /&gt;
+</pre>
+
+<hr size="5">
+
+<!-- ======================================== -->
+
+<h3><a name="TrustedLoader">TrustedLoader</a></h3>
+
+<p><b>Type:</b> Configuration</p>
+
+<h4>Description</h4>
+
+<p>Provides special handling for &quot;trusted&quot; contexts which have a
+<code>interceptors.xml</code> file in their <code>WEB-INF</code> directory.
+This file can specify modules to be added to the server as if they were
+specified in the <code>server.xml</code> file.</p>
+
+<h4>Attributes</h4>
+
+<p>This module has no user settable attributes.</p>
+
+<h4>Example(s)</h4>
+
+<pre>
+&lt;TrustedLoader /&gt;
+</pre>
+
+<hr size="5">
+
+<!-- ======================================== -->
+
+<h3><a name="WebXmlReader">WebXmlReader</a></h3>
+
+<p><b>Type:</b> Servlet 2.2 Facade</p>
+
+<h4>Description</h4>
+
+<p>Reads the <code>WEB-INF/web.xml</code> file for each context.</p>
+
+<h4>Attributes</h4>
+
+<table border="1" cellpadding="2" cellspacing="0">
+  <tr valign="top">
+    <th>Attribute</th>
+    <th>Description</th>
+    <th>Default</th>
+  </tr>
+  <tr valign="top">
+    <td>validate</td>
+    <td>Enables validation of the <code>web.xml</code> when read.  After the
+      first validation, a <code>webxmlval.txt</code> file is written to the
+      context's work directory. On subsequent startups of Tomcat, validation
+      is skipped if the <code>webxmlval.txt</code> remains newer than the
+      <code>web.xml</code> file.</td>
+    <td>true</td>
+  </tr>
+</table>
+
+<h4>Example(s)</h4>
+
+<pre>
+&lt;WebXmlReader validate=&quot;false&quot; /&gt;
+</pre>
+
+<hr size="5">
+
+<!-- ======================================== -->
+
+<h3><a name="WorkDirSetup">WorkDirSetup</a></h3>
+
+<p><b>Type:</b> Configuration</p>
+
+<h4>Description</h4>
+
+<p>Set the &quot;work&quot; directory for contexts which don't have the
+&quot;work&quot; directory specified explicitly.</p>
+
+<h4>Attributes</h4>
+
+<table border="1" cellpadding="2" cellspacing="0">
+  <tr valign="top">
+    <th>Attribute</th>
+    <th>Description</th>
+    <th>Default</th>
+  </tr>
+  <tr valign="top">
+    <td>cleanWorkDir</td>
+    <td>Deletes context &quot;work&quot; directories as each context is started and
+      shutdown. It is recommended that you only set this <code>true</code>
+      during development if it serves a purpose.</td>
+    <td>false</td>
+  </tr>
+  <tr valign="top">
+    <td>useWebInf</td>
+    <td>If <code>true</code>, defaults the &quot;work&quot; directory to
+       <code>WEB-INF/TOMCAT_WORKDIR</code>. If <code>false</code>, defaults
+       the &quot;work&quot; directory to
+       <code><i>workDirBase</i>/<i>host</i>/<i>context path</i></code>,
+       where <code><i>host</i></code> is the context's virtual host name, or
+       &quot;DEFAULT&quot; if a virtual host name isn't set.  If the virtual
+       host name is an IP address, the colons will be replaced with '_'.</td>
+    <td>false</td>
+  </tr>
+  <tr valign="top">
+    <td>workDirBase</td>
+    <td>The base directory for work directories when <code>useWebInf</code> is
+      <code>false</code>.</td>
+    <td>ContextManager's <code>work</code> setting which defaults to
+      &quot;work&quot;</td>
+  </tr>
+</table>
+
+<h4>Example(s)</h4>
+
+<pre>
+&lt;WorkDirSetup cleanWorkDir=&quot;false&quot; workDirBase=&quot;work&quot; /&gt;
+</pre>
+
+<hr size="5">
+
+
+</body>
+</html>
+

@@ -1,0 +1,563 @@
+<html>
+<head>
+<title>Action Items List for Jakarta Tomcat</title>
+</head>
+<body bgcolor="white">
+
+<div align="center">
+NOTE:  This document is the current cut at a status document<br>
+to track outstanding issues for the ongoing development of<br>
+Tomcat.  Nothing in this document should be considered<br>
+authoritative until it has been discussed and initially<br>
+approved on the TOMCAT-DEV mailing list, at which point<br>
+this note will be removed.
+</div>
+
+<div align="center"><h1>Action Items List for Jakarta Tomcat</h1></div>
+
+<p>This document is a living list of the action items related to the
+current and future development of the Tomcat servlet container.  As such,
+it focuses primarily on enhancements to existing features, as well as the
+addition of new features.  Bugs in the implementation of existing features
+should be reported to
+<a href="http://jakarta.apache.org/bugs">http://jakarta.apache.org/bugs</a>
+so that they can be tracked and fixed.  The columns in this report contain
+the following information:
+<ul>
+<li><b>Priority</b> - A sense of how important the Tomcat development
+    community feels it is to address this issue in the short term.</li>
+<li><b>Release</b> - The interim or final release (such as <code>3.3m2</code>)
+    for which this action item is scheduled to be completed.</li>
+<li><b>Action Item</b> - Concise description of the action item
+    to be completed.</li>
+<li><b>Volunteers</b> - Names and EMAIL addresses of those developers who
+    have volunteered to assist in the design, implementation, testing, and
+    documentation of this action item's changes to Tomcat.</li>
+</ul>
+
+<p>Additions to, subtractions from, and changes to the action items listed
+here should be discussed and approved on the TOMCAT-DEV mailing list, as
+described on the
+<a href="http://jakarta.apache.org/guidelines/decisions.html">Decision
+Making</a> page on the Jakarta Project web site.  Developers can nominate
+themselves to work on particular action items by asking a Committer to add
+their name and EMAIL address to those items.  The developers working on each
+item should discuss and agree upon the approach to be used for implementing
+the item's changes to the project source code and documentation, prior to
+completing those changes.  Such discussions should take place on the
+TOMCAT-DEV mailing list so that everyone can stay apprised of what is going
+on, or chime in if they want to contribute ideas and suggestions.
+
+<p>At various points in time, particular action items will be selected
+and assigned to a particular interim release of Tomcat (based on lazy consensus
+on the TOMCAT-DEV mailing list).  At that time, the assigned release will be
+recorded in this document, and the item will be listed under that release in
+the current <a href="RELEASE-PLAN-3.3">RELEASE-PLAN</a> schedule.
+
+<p>For convenience, the action items have been organized into general
+categories, which are presented in alphabetical order.  The following
+categories of actions are currently identified:
+<ul>
+<li><a href="#Architecture">Architecture</a> of major Tomcat components
+<li><a href="#Administration">Administration</a> application and tools
+<li><a href="#Connectors">Connectors</a> to web servers and HTTP clients
+<li><a href="#Containers">Containers</a> in the Tomcat core engine
+<li><a href="#JSP">JSP</a> functionality enhancements
+<li><a href="#Performance">Performance</a> improvements
+<li><a href="#Release">Release</a> preparation items
+<li><a href="#Future">Ideas</a> for the future
+</ul>
+
+<br><br>
+<div align="center"><hr width="75%"</div>
+<br>
+
+<a name="Architecture"></a>
+<div align="center"><h1>Architecture</h1></div>
+<table border="1" width="100%">
+  <tr>
+    <th width="10%">Priority</th>
+    <th width="10%">Release</th>
+    <th width="50%">Action Item</th>
+    <th width="30%">Volunteers</th>
+  </tr>
+  <tr>
+    <td>High</td>
+    <td>3.3m1</td>
+    <td>Refactoring of existing code to improve the flexibility of Tomcat
+        and minimize the amount of spaghetti code to help readability and
+        maintainability.  Though listed separately, some of the performance
+        improvements come about as part of this refactoring effort.</td>
+    <td><a href="mailto:costin@eng.sun.com">Costin Manolache</a></td>
+  </tr>
+  <tr>
+    <td>High</td>
+    <td>3.3m1</td>
+    <td>Separate the Servlet 2.2/JSP 1.1 API implementation from the Tomcat's core
+        classes through the use of a facade.  If implemented properly, bug fixing
+        of Servlet 2.2/JSP 1.1 bugs should only affect the facade and not the
+        core Tomcat classes.</td>
+    <td><a href="mailto:costin@eng.sun.com">Costin Manolache</a></td>
+  </tr>
+  <tr>
+    <td>Medium</td>
+    <td>3.3m1</td>
+    <td>Implement per context interceptors.</td>
+    <td><a href="mailto:nacho@siapi.es">Ignacio Ortega</a></td>
+  </tr>
+</table>
+
+
+<a name="Administration"></a>
+<div align="center"><h1>Administration</h1></div>
+<table border="1" width="100%">
+  <tr>
+    <th width="10%">Priority</th>
+    <th width="10%">Release</th>
+    <th width="50%">Action Item</th>
+    <th width="30%">Volunteers</th>
+  </tr>
+  <tr>
+    <td>High</td>
+    <td>3.2</td>
+    <td>Add out-of-the-box functionality to install Tomcat as a
+        "service" under Microsoft NT.</td>
+    <td><a href="mailto:shachor@il.ibm.com">Gal Shachor</a> </td>
+  </tr>
+  <tr>
+    <td>Medium</td>
+    <td>3.3m1</td>
+    <td>Separate Tomcat classes into appropriate jar files to facilitate Tomcat's
+        use in different environments.  For example, if used in an embedded
+        environment, the jar containing the Tomcat startup classes may be
+        left out of the classpath.</td>
+    <td><a href="mailto:costin@eng.sun.com">Costin Manolache</a></td>
+  </tr>
+  <tr>
+    <td>High</td>
+    <td>3.3b1</td>
+    <td>Add usability enhancements. This would include making Tomcat easier to
+        configure, providing better error messages, and adding more documentation
+        on module options.  Also, try to update /admin to provide better
+        monitoring of the running Tomcat.</td>
+    <td><a href="mailto:costin@eng.sun.com">Costin Manolache</a></td>
+  </tr>
+</table>
+
+
+<a name="Connectors"></a>
+<div align="center"><h1>Connectors</h1></div>
+<table border="1" width="100%">
+  <tr>
+    <th width="10%">Priority</th>
+    <th width="10%">Release</th>
+    <th width="50%">Action Item</th>
+    <th width="30%">Volunteers</th>
+  </tr>
+  <tr>
+    <td>High</td>
+    <td>3.3m1</td>
+    <td>Improve the performance and thread utilization of the
+        current HTTP/1.0 connector used by Tomcat stand-alone.</td>
+    <td><a href="mailto:costin@eng.sun.com">Costin Manolache</a></td>
+  </tr>
+</table>
+
+
+<a name="Containers"></a>
+<div align="center"><h1>Containers</h1></div>
+<table border="1" width="100%">
+  <tr>
+    <th width="10%">Priority</th>
+    <th width="10%">Release</th>
+    <th width="50%">Action Item</th>
+    <th width="30%">Volunteers</th>
+  </tr>
+  <tr>
+    <td>High</td>
+    <td>3.2</td>
+    <td>Finish the implementation and testing of FORM-based authentication
+        and access control.</td>
+    <td>---</td>
+  </tr>
+  <tr>
+    <td>Medium</td>
+    <td>3.2</td>
+    <td>Design and implement SSL based authentication and access
+        control, in a manner that minimizes installation hassles and
+        does not cause problems with US export controls.</td>
+    <td>---</td>
+  </tr>
+  <tr>
+    <td>Medium</td>
+    <td>3.3m1</td>
+    <td>Refactor the implementation of RequestSecurityProvider and
+        SecurityCheck so that a Tomcat deployer can integrate with
+        their own security realm by implementing a single class,
+        rather than having to duplicate the code in SecurityCheck.</td>
+    <td><a href="mailto:costin@eng.sun.com">Costin Manolache</a></td>
+  </tr>
+  <tr>
+    <td>Medium</td>
+    <td>3.3m1</td>
+    <td>Add support for pluggable session management components, with
+        support for file-based, JDBC-based, JNDI-based, and possibly
+        other persistence mechanisms.</td>
+    <td><a href="mailto:costin@eng.sun.com">Costin Manolache</a></td>
+  </tr>
+</table>
+
+
+<a name="JSP"></a>
+<div align="center"><h1>JSP Functionality</h1></div>
+<table border="1" width="100%">
+  <tr>
+    <th width="10%">Priority</th>
+    <th width="10%">Release</th>
+    <th width="50%">Action Item</th>
+    <th width="30%">Volunteers</th>
+  </tr>
+  <tr>
+    <td>Medium</td>
+    <td>3.3m1</td>
+    <td>Incorporate support for pluggable JSP page parsers.</td>
+    <td><a href="mailto:costin@eng.sun.com">Costin Manolache</a></td>
+  </tr>
+  <tr>
+    <td>Medium</td>
+    <td>3.3m1</td>
+    <td>Make dependency checking a stand-alone module, and extend it to
+      allow complex dependency checking. Make it useable from outside
+      jsp, and add a "shortcut" for Tomcat that will allow fast invocation
+    </td>
+    <td><a href="mailto:costin@eng.sun.com">Costin Manolache</a></td>
+  </tr>
+</table>
+
+
+<a name="Performance"></a>
+<div align="center"><h1>Performance Improvements</h1></div>
+<table border="1" width="100%">
+  <tr>
+    <th width="10%">Priority</th>
+    <th width="10%">Release</th>
+    <th width="50%">Action Item</th>
+    <th width="30%">Volunteers</th>
+  </tr>
+  <tr>
+    <td>Medium</td>
+    <td>3.3m1</td>
+    <td>Use pooling and recycling where possible.</td>
+    <td><a href="mailto:costin@eng.sun.com">Costin Manolache</a></td>
+  </tr>
+  <tr>
+    <td>Medium</td>
+    <td>3.3m1</td>
+    <td>Use introspection to determine which methods are implemented by an
+        interceptor so only those interceptors which implement a method are
+        called.</td>
+    <td><a href="mailto:costin@eng.sun.com">Costin Manolache</a></td>
+  </tr>
+  <tr>
+    <td>Medium</td>
+    <td>3.3m1</td>
+    <td>Wider use of MessageBytes to help minimize string garbage.</td>
+    <td><a href="mailto:costin@eng.sun.com">Costin Manolache</a></td>
+  </tr>
+</table>
+
+
+<a name="Release"></a>
+<div align="center"><h1>Release Preparation</h1></div>
+<table border="1" width="100%">
+  <tr>
+    <th width="10%">Priority</th>
+    <th width="10%">Release</th>
+    <th width="50%">Action Item</th>
+    <th width="30%">Volunteers</th>
+  </tr>
+  <tr>
+    <td>High</td>
+    <td>3.3m1</td>
+    <td>Simplify running of Tomcat's internal test and Watchdog to encourage
+        wider use of these tests.  If possible, create a user document describing
+        how a user can develop a new test to test their own web application.  If
+        user created tests are simple enough, we will get better verification that
+        the bug fixes succeed and stay fixed.</td>
+    <td><a href="mailto:costin@eng.sun.com">Costin Manolache</a></td>
+  </tr>
+  <tr>
+    <td>High</td>
+    <td>ongoing</td>
+    <td>Build a Bug List of the bugs that need to be fixed.  These bugs will come from
+        scanning the BugRat database and feedback from the field.</td>
+    <td><a href="mailto:Larry.Isaacs@sas.com">Larry Isaacs</a> and volunteers</td>
+  </tr>
+  <tr>
+    <td>High</td>
+    <td>ongoing</td>
+    <td>Perform testing of Tomcat.  This includes testing Tomcat standalone as
+        well as with other web servers.  Verify that bugs in the Bug List are fixed
+        on various platforms.</td>
+    <td>Testing volunteers</td>
+  </tr>
+  <tr>
+    <td>High</td>
+    <td>ongoing</td>
+    <td>Commit patches and changes to CVS to fix bugs and other issues </td>
+    <td>Committers</td>
+  </tr>
+  <tr>
+    <td>High</td>
+    <td>ongoing</td>
+    <td>Code review and improve code documentation.  All unfinished implementation
+        that can be identified, often marked with "XXX" in a comment, needs to
+        be examined to determine if its completion is required by the release
+        standard.</td>
+    <td>Code review volunteers</td>
+  </tr>
+  <tr>
+    <td>High</td>
+    <td>3.3final</td>
+    <td>Add and improve user documentation.  Documentation in both binary and
+        source distribution needs to be addressed.</td>
+    <td>Documentation volunteers</td>
+  </tr>
+  <tr>
+    <td>High</td>
+    <td>3.3final</td>
+    <td>Security holes opened to facilitate development and testing need to be
+        closed prior to final release.  Any additional security holes that are
+        identified need to be addressed.</td>
+    <td>---</td>
+  </tr>
+</table>
+
+
+<a name="Future"></a>
+<div align="center"><h1>Ideas For The Future</h1></div>
+<table border="1" width="100%">
+  <tr>
+    <th width="10%">Priority</th>
+    <th width="10%">Release</th>
+    <th width="50%">Action Item</th>
+    <th width="30%">Volunteers</th>
+  </tr>
+  <tr>
+    <td>High</td>
+    <td>---</td>
+    <td>Define a Tomcat-specific <i>Service Provider Interface</i> (SPI)
+        that defines a stable API which application server and development
+        tool providers can use to integrate Tomcat within their products.</td>
+    <td>---</td>
+  </tr>
+  <tr>
+    <td>Low</td>
+    <td>---</td>
+    <td>Discuss and agree upon Tomcat distribution strategies so that users
+        can select a minimal "reference implementation" version of Tomcat to
+        validate their own containers against, or a full featured release
+        with all currently included functionality.</td>
+    <td>---</td>
+  </tr>
+  <tr>
+    <td>High</td>
+    <td>---</td>
+    <td>Improve the ease of installation of Tomcat, especially on
+        Windows platforms by integrating it with an installation program.</td>
+    <td>---</td>
+  </tr>
+  <tr>
+    <td>Medium</td>
+    <td>---</td>
+    <td>Define functional and user interface requirements for the interactive
+        (servlet/JSP based) administration tool for managing running Tomcat
+        instances.</td>
+    <td>---</td>
+  </tr>
+  <tr>
+    <td>Medium</td>
+    <td>---</td>
+    <td>Implement interactive administration tool that fulfills the
+        requirements described above.</td>
+    <td>---</td>
+  </tr>
+  <tr>
+    <td>Low</td>
+    <td>---</td>
+    <td>Design an implement a tool for creating and customizing web application
+        deployment descriptors (i.e. <code>web.xml</code> files) in a
+        user friendly manner.</td>
+    <td>---</td>
+  </tr>
+  <tr>
+    <td>Medium</td>
+    <td>---</td>
+    <td>Design, implement, and test an HTTP/1.1 connector to be
+        used by Tomcat stand-alone.</td>
+    <td>---</td>
+  </tr>
+  <tr>
+    <td>Medium</td>
+    <td>---</td>
+    <td>Implement a two-way communications protocol in the Apache
+        connector, such that getRealPath() can respect Apache virtual
+        mappings, getMimeType() can respect Apache MIME type mappings,
+        and so on.</td>
+    <td>---</td>
+  </tr>
+  <tr>
+    <td>Medium</td>
+    <td>---</td>
+    <td>Implement a new Apache/2.0 connector whereby Tomcat can be
+        run "in process" instead of "out of process".</td>
+    <td>---</td>
+  </tr>
+  <tr>
+    <td>Medium</td>
+    <td>---</td>
+    <td>Ensure that all web server connectors pass sufficient information to
+        properly set the value returned by
+        <code>ServletRequest.isSecure()</code> and to populate the SSL
+        information attributes described in ...</td>
+    <td>---</td>
+  </tr>
+  <tr>
+    <td>High</td>
+    <td>---</td>
+    <td>Define and implement full virtual host support, including:
+        single-JVM configuration option, support for per-virtual-host
+        interceptors, and so on.</td>
+    <td>---</td>
+  </tr>
+  <tr>
+    <td>Medium</td>
+    <td>---</td>
+    <td>Design and implement DIGEST based authentication and access
+        control.</td>
+    <td>---</td>
+  </tr>
+  <tr>
+    <td>Medium</td>
+    <td>---</td>
+    <td>Design and implement "single sign on" support for cross application
+        access with a single login, as described in Section 11 of the
+        Servlet API Specification Version 2.2.</td>
+    <td>---</td>
+  </tr>
+  <tr>
+    <td>Medium</td>
+    <td>---</td>
+    <td>Design and implement support for serving web applications
+        directly from WAR files, and/or from a URL-based document
+        root.  Probably requires pluggable implementation of the
+        getResource() family of calls.</td>
+    <td>---</td>
+  </tr>
+  <tr>
+    <td>Medium</td>
+    <td>---</td>
+    <td>Improve the internationalization support provided in Tomcat by
+        factoring remaining hard-coded English message strings into
+        resource files, and providing translated resource files for
+        other languages.</td>
+    <td>---</td>
+  </tr>
+  <tr>
+    <td>Medium</td>
+    <td>---</td>
+    <td>Implement the optional <i>web application environment</i> support
+        described in Section 9.9 of the Servlet API Specification Version 2.2,
+        and Chapter 5 of the Java2 Platform Enterprise Edition Version 1.2
+        Specification.</td>
+    <td>---</td>
+  </tr>
+  <tr>
+    <td>Medium</td>
+    <td>---</td>
+    <td>More generalized implementation of logging, that allows plugins
+        for choosing log formatting styles.</td>
+    <td>---</td>
+  </tr>
+  <tr>
+    <td>Medium</td>
+    <td>---</td>
+    <td>Design and implement better mechanisms for Tomcat to "sandbox"
+        multiple web applications running in the same container, to avoid
+        having them interfere with each other.</td>
+    <td>---</td>
+  </tr>
+  <tr>
+    <td>Low</td>
+    <td>---</td>
+    <td>Implement instance pooling for servlets that implement the
+        <code>SingleThreadModel</code> interface.</td>
+    <td>---</td>
+  </tr>
+  <tr>
+    <td>Low</td>
+    <td>---</td>
+    <td>Fully support "absolute" document root paths on Windows that
+        start with a '/' or '\' character, instead of a drive letter
+        plus a colon.  Currently, <code>File.isAbsolute()</code> on
+        Windows JVMS considers such a path to be relative.</td>
+    <td>---</td>
+  </tr>
+  <tr>
+    <td>Medium</td>
+    <td>---</td>
+    <td>Incorporate support for scripting languages other than Java,
+        as outlined in the JSP specification.</td>
+    <td>---</td>
+  </tr>
+  <tr>
+    <td>Medium</td>
+    <td>---</td>
+    <td>Review and optimize the performance of the servlet classes
+        generated by the JSP page compiler.</td>
+    <td>---</td>
+  </tr>
+  <tr>
+    <td>High</td>
+    <td>---</td>
+    <td>Add full support for WebDAV, either as servlets included in the
+        full-featured distribution of Tomcat, or as a separate sub-project
+        under Jakarta.</td>
+    <td>---</td>
+  </tr>
+  <tr>
+    <td>Medium</td>
+    <td>---</td>
+    <td>Default file-serving servlet has problems dealing with directory and
+        file names that contain spaces or other special characters.</td>
+    <td>---</td>
+  </tr>
+  <tr>
+    <td>Low</td>
+    <td>---</td>
+    <td>Integrate the <a href="http://java.apache.org/jservssi">Apache JSSI</a>
+        project's support for embedded <code>&lt;servlet&gt;</code> tags in
+        <code>.jhtml</code> pages into the full-featured distribution of
+        Tomcat (assuming the Apache JSSI project group agrees), bringing it
+        up to date with respect to servlet API 2.2 as required.</td>
+    <td>---</td>
+  </tr>
+  <tr>
+    <td>Low</td>
+    <td>---</td>
+    <td>Add a default servlet that can serve CGI scripts and applications,
+        for use in Tomcat deployments not connected to a web server, or
+        to enable RequestDispatcher-based access to CGI scripts and
+        applications.</td>
+    <td>---</td>
+  </tr>
+</table>
+
+
+<br>
+<div align="center"><hr width="75%"><font size="2">
+$Id: STATUS.html,v 1.11 2001/01/27 18:42:26 larryi Exp $
+</font></div>
+
+</body>
+</html>
